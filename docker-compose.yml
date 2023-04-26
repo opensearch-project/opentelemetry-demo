@@ -686,6 +686,8 @@ services:
     ports:
       - "9200:9200"
       - "9600:9600"
+    networks:
+      - opentelemetry-demo # All of the containers will join the same Docker bridge network
 
   # OpenSearch store - node2
   opensearch-node2:
@@ -707,6 +709,8 @@ services:
         hard: 65536
     volumes:
       - opensearch-data2:/usr/share/opensearch/data
+    networks:
+      - opentelemetry-demo
 
   # OpenSearch store - dashboard
   opensearch-dashboards:
@@ -718,6 +722,8 @@ services:
       - "5601" # Expose port 5601 for web access to OpenSearch Dashboards
     environment:
       OPENSEARCH_HOSTS: '["https://opensearch-node1:9200","https://opensearch-node2:9200"]' # Define the OpenSearch nodes that OpenSearch Dashboards will query
+    networks:
+      - opentelemetry-demo
 
   # *****
   # Tests
