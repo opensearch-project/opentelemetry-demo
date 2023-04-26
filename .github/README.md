@@ -11,8 +11,7 @@ The next instructions are similar and use the same docker compose file.
    docker-compose up -d
    ```
 
-### Explore and analyze the data With OpenSearch Observability
-Review revised OpenSearch [Observability Architecture](architecture.md)
+## Explore and analyze the data With OpenSearch Observability
 
 ### Service map
 ![Service map](https://docs.aws.amazon.com/images/opensearch-service/latest/developerguide/images/ta-dashboards-services.png)
