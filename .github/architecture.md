@@ -1,14 +1,7 @@
 # Opensearch OTEL Demo Architecture
 This document will review the OpenSearch architecture for the [OTEL demo](https://opentelemetry.io/docs/demo/) and will review how to use the new Observability capabilities
 implemented into OpenSearch.
----
-This diagram provides an overview of the system components, showcasing the configuration derived from the OpenTelemetry Collector (otelcol) configuration file utilized by the OpenTelemetry demo application.
 
-Additionally, it highlights the observability data (traces and metrics) flow within the system.
-
-![](img/otelcol-data-flow-overview.png)
-
----
 [OTEL DEMO](https://opentelemetry.io/docs/demo/architecture/) Describes the list of services that are composing the Astronomy Shop.
 
 They are combined of:
@@ -21,7 +14,9 @@ They are combined of:
  - [Feature Flag](https://opentelemetry.io/docs/demo/services/feature-flag/)
  - [Fraud Detection](https://opentelemetry.io/docs/demo/services/fraud-detection/)
  - [Frontend](https://opentelemetry.io/docs/demo/services/frontend/)
+ - [Frontend Nginx Proxy](../src/nginx-otel/README.md) *(replacement for _Frontend-Proxy_)* 
  - [Kafka](https://opentelemetry.io/docs/demo/services/kafka/)
+ - [Load Generator](https://opentelemetry.io/docs/demo/services/load-generator/)
  - [Payment](https://opentelemetry.io/docs/demo/services/payment/)
  - [Product Catalog](https://opentelemetry.io/docs/demo/services/product-catalog/)
  - [Quote](https://opentelemetry.io/docs/demo/services/quote/)
@@ -29,38 +24,17 @@ They are combined of:
  - [Shipping](https://opentelemetry.io/docs/demo/services/shipping/)
  - [Fluent-Bit](../src/fluent-bit/README.md) *(nginx's otel log exported)* 
  - [Integrations](../src/integrations/README.md) *(pre-canned OpenSearch assets)* 
- - [DataPrepper](../src/dataprepper/README.md) *(OpenSearch's ingestion pipeline)
 
-Backend supportive services
- - [Load Generator](http://load-generator:8089)
-   - See [description](https://opentelemetry.io/docs/demo/services/load-generator/)
- - [Frontend Nginx Proxy](http://nginx:90) *(replacement for _Frontend-Proxy_)*
-   - See [description](../src/nginx-otel/README.md)
- - [OpenSearch](https://opensearch-node1:9200)
-    - See [description](https://github.com/YANG-DB/opentelemetry-demo/blob/12d52cbb23bbf4226f6de2dfec840482a0a7d054/docker-compose.yml#L697)
- - [Dashboards](http://opensearch-dashboards:5601)
-   - See [description](https://github.com/YANG-DB/opentelemetry-demo/blob/12d52cbb23bbf4226f6de2dfec840482a0a7d054/docker-compose.yml#L747) 
- - [Prometheus](http://prometheus:9090)
-   - See [description](https://github.com/YANG-DB/opentelemetry-demo/blob/12d52cbb23bbf4226f6de2dfec840482a0a7d054/docker-compose.yml#L674)
- - [Feature-Flag](http://feature-flag-service:8881)
-   - See [description](../src/featureflagservice/README.md)
- - [Grafana](http://grafana:3000)
-   - See [description](https://github.com/YANG-DB/opentelemetry-demo/blob/12d52cbb23bbf4226f6de2dfec840482a0a7d054/docker-compose.yml#L637)
+
 ---
 
 ## Purpose
 The purpose of this demo is to demonstrate the different capabilities of OpenSearch Observability to investigate and reflect your system.
 
-### Ingestion 
-The ingestion capabilities for OpenSearch is to be able to support multiple pipelines:
-  - [Data-Prepper](https://github.com/opensearch-project/data-prepper/) is an OpenSearch ingestion project that allows ingestion of OTEL standard signals using Otel-Collector
-  - [Jaeger](https://opensearch.org/docs/latest/observing-your-data/trace/trace-analytics-jaeger/) is an ingestion framework which has a build in capability for pushing OTEL signals into OpenSearch
-  - [Fluent-Bit](https://docs.fluentbit.io/manual/pipeline/outputs/opensearch) is an ingestion framework which has a build in capability for pushing OTEL signals into OpenSearch
+ - Integrations - the integration service is a list of pre-canned assets that are loaded in a combined manner to allow users the ability
+for simple and automatic way to discover and review their services topology.
 
-### Integrations -
-The integration service is a list of pre-canned assets that are loaded in a combined manner to allow users the ability for simple and automatic way to discover and review their services topology.
-
-These (demo-sample) integrations contain the following assets:
+These integrations contain the following assets:
  - components & index template mapping
  - datasources 
  - data-stream & indices
@@ -84,7 +58,7 @@ Once these assets are loaded - the user can start reviewing its Observability da
 
 ![Traces](img/traces.png)
 
-![ServiceGraph](img/service-graph.png)
+
 ---
 
 ### **Scenarios**
