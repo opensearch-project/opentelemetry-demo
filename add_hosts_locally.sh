@@ -1,3 +1,6 @@
+# Copyright The OpenTelemetry Authors
+# SPDX-License-Identifier: Apache-2.0
+
 #!/bin/bash
 # Local host that are used to help developing and debugging the OTEL demo locally
 
