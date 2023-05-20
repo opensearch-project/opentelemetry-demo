@@ -297,6 +297,7 @@ services:
       - OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE
       - WEB_OTEL_SERVICE_NAME=frontend-web
     depends_on:
+      - accountingservice
       - adservice
       - cartservice
       - checkoutservice

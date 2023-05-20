@@ -1,6 +1,6 @@
 # OpenSearch Observability Tutorial
 
-Welcome to the OpenSearch Observability tutorial! 
+Welcome to the OpenSearch Observability tutorials! 
 
 This tutorial is designed to guide users in the Observability domain through the process of using the OpenSearch Observability plugin. By the end of this tutorial, you will be familiar with building dashboards, creating Pipe Processing Language (PPL) queries, federating metrics from Prometheus data sources, and conducting root cause analysis investigations on your data.
 
