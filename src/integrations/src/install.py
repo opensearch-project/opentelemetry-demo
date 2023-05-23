@@ -166,8 +166,8 @@ def create_datasources():
 if __name__ == '__main__':
     # import all assets
     test_connection()
-    create_mapping_components(client)
-    create_mapping_templates(client)
+#     create_mapping_components(client)
+#     create_mapping_templates(client)
     create_data_streams()
-    load_dashboards()
-    create_datasources()
+#     load_dashboards()
+#     create_datasources()

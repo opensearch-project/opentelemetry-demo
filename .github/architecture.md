@@ -27,7 +27,7 @@ They are combined of:
  - [Quote](https://opentelemetry.io/docs/demo/services/quote/)
  - [Recommendation](https://opentelemetry.io/docs/demo/services/recommendation/)
  - [Shipping](https://opentelemetry.io/docs/demo/services/shipping/)
- - [Fluent-Bit](../src/fluent-bit/README.md) *(nginx's otel log exported)* 
+ - [Fluent-Bit](src/fluentbit-nginx/README.md) *(nginx's otel log exported)* 
  - [Integrations](../src/integrations/README.md) *(pre-canned OpenSearch assets)* 
  - [DataPrepper](../src/dataprepper/README.md) *(OpenSearch's ingestion pipeline)
 

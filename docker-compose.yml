@@ -464,11 +464,11 @@ services:
       - 90:90
     depends_on:
       - frontend
-      - fluentbit
+      - fluentbit-nginx
       - otelcol
       - loadgenerator
     links:
-      - fluentbit
+      - fluentbit-nginx
     logging:
       driver: "fluentd"
       options:
@@ -476,16 +476,29 @@ services:
         tag: nginx.access
 
   # Fluent-bit logs shipper service
-  fluentbit:
-    container_name: fluentbit
+  fluentbit-nginx:
+    container_name: fluentbit-nginx
     image: fluent/fluent-bit:latest
     volumes:
-      - ./src/fluent-bit:/fluent-bit/etc
+      - ./src/fluentbit-nginx:/fluent-bit/etc
     ports:
       - "24224:24224"
       - "24224:24224/udp"
     depends_on:
       - opensearch-node1
+
+  # Fluent-bit logs shipper service
+  fluentbit-metricbeat:
+    container_name: fluentbit-metricbeat
+    image: fluent/fluent-bit:latest
+    volumes:
+      - ./src/fluentbit-metricbeat:/fluent-bit/etc
+      - ./src/fluentbit-metricbeat/logs:/fluent-bit/logs
+    ports:
+      - "24224:24224"
+      - "24224:24224/udp"
+    depends_on:
+      - metricbeat
 
   # Shipping service
   shippingservice:
@@ -685,6 +698,7 @@ services:
     depends_on:
       - jaeger-agent
       - data-prepper
+      - fluentbit-metricbeat
     logging: *logging
 
   # Prometheus
@@ -709,6 +723,17 @@ services:
     ports:
       - "${PROMETHEUS_SERVICE_PORT}:${PROMETHEUS_SERVICE_PORT}"
     logging: *logging
+
+  # metricbeat to collect open
+  metricbeat:
+    image: docker.elastic.co/beats/metricbeat:8.1.1
+    volumes:
+      - ./src/metricbeat/metricbeat.yml:/usr/share/metricbeat/metricbeat.yml
+      - ./src/metricbeat/logs:/usr/share/metricbeat/logs
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: metricbeat -e -strict.perms=false
+    depends_on:
+      - opensearch-node1
 
   # OpenSearch store - node1
   opensearch-node1: # This is also the hostname of the container within the Docker network (i.e. https://opensearch-node1/)

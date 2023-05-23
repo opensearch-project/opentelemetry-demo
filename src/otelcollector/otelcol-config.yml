@@ -1,7 +1,6 @@
 # Copyright The OpenTelemetry Authors
 # SPDX-License-Identifier: Apache-2.0
 
-
 receivers:
   otlp:
     protocols:
@@ -11,6 +10,8 @@ receivers:
           allowed_origins:
             - "http://*"
             - "https://*"
+  fluentforward:
+    endpoint: 0.0.0.0:24224
 
 exporters:
   otlp/2:
@@ -52,6 +53,6 @@ service:
       processors: [filter, batch]
       exporters: [prometheus, logging]
     logs:
-      receivers: [otlp]
+      receivers: [otlp, fluentforward]
       processors: [batch]
       exporters: [logging]

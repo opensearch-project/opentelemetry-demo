@@ -1,0 +1,10 @@
+metricbeat.modules:
+  - module: opensearch
+    period: 10s
+    hosts: ["https://opensearch-node1:9200"]
+    username: "admin"
+    password: "admin"
+
+output.file:
+  path: "/usr/share/metricbeat/logs"
+  filename: metricbeat.json
