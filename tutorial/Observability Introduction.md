@@ -2,33 +2,6 @@
 The purpose of this tutorial is to provide the skill set for the user to start building his system's observability representation
 using the tools supplied by the Observability plugin.
 
-### Workflow
-1) Introduction of the Observability tools
-   1) PPL Queries
-   2) Saved search templates
-   3) Correlation build-in queries
-   4) Alerts and monitor KPI
-   5) Logs analytics
-   6) Trace analytics
-   7) Metrics analytics
-   8) Service maps / graph
-   
-
-2) How do we map our application topology into the Observability domain
-
-3) Collecting telemetry signals using different providers
-   1) data-prepper
-   2) Jaeger
-   3) Fluent-bit
-
-
-4) Defining the application services & infrastructure KPI / SLA to monitor  
-   1) Services break-down according to impact ration - **using graph centrality calculation**
-
-5) Defining the monitoring channels and alerts 
-6) Creating the Visual projection of the main assets we need to observe
-
-
 ---
 
 ## The Observability acronyms:
@@ -36,7 +9,7 @@ using the tools supplied by the Observability plugin.
 The next section describes the main Observability acronyms that are used in the daily work of the Observability domain experts and reliability engineers.
 Understanding their concepts and how to use them play a key factor in this tutorial. 
 
-## The SAAFE model
+### The SAAFE model
 The SAAFE model is a comprehensive approach to Observability that stands for Secure, Adaptable, Automated, Forensic, and Explainable.
 
 Each element of this model plays a vital role in enhancing the visibility and understanding of systems.
@@ -80,8 +53,6 @@ When any of the KPIs for these services exceed their thresholds, an Insight is g
 
 This approach enhances system reliability and user satisfaction by ensuring that potential problems are identified and addressed proactively.
 
-
-
 ### The RED monitoring Strategy
 
 The RED method in Observability is a key monitoring strategy adopted by organizations to understand the performance of their systems. 
@@ -115,7 +86,7 @@ It usually includes the SLOs, as well as the repercussions for not meeting them,
 
 This ensures accountability, aids in setting realistic expectations, and allows the service provider to manage and mitigate potential issues proactively. Therefore, both SLOs and SLAs are indispensable tools for maintaining service quality, enhancing user satisfaction, and driving continuous improvement.
 
-### SLO burn-rate
+### The burn-rate Strategy
 
 SLO burn rate is a concept in site reliability engineering that refers to the rate at which a service is consuming or "burning" through its error budget. 
 
@@ -127,7 +98,7 @@ The burn rate is an important metric because it can provide an early warning sig
 
 By monitoring the burn rate, teams can proactively address issues, potentially before they escalate and impact users significantly.
 
-### Anomaly Detection
+### Baseline and Anomaly Detection
 
 Anomaly detection in Observability is a powerful technique used to identify unusual behavior or outliers within system metrics that deviate from normal operation.
 
@@ -135,7 +106,55 @@ Anomalies could be indicative of potential issues such as bugs in code, infrastr
 
 For instance, an unexpected surge in error rates or latency might signify a system failure or a sudden drop in traffic could imply an issue with the user interface. 
 
-Anomaly detection algorithms, often incorporating machine learning techniques, analyze system data over time to learn what constitutes "normal" behavior. Then, they continuously monitor the system's state and alert engineers when they detect patterns that diverge from this established norm. 
+Anomaly detection algorithms, often incorporating machine learning techniques which are based on taking the base-line from a functioning system.
+
+Once we have a baseline sampling mechanism it is used to analyze the system data over time to learn what constitutes "normal" behavior . 
+
+Then, they continuously monitor the system's state and alert engineers when they detect patterns that diverge from this established norm. 
 
 These alerts enable teams to proactively address issues, often before they affect end-users, thereby enhancing the system's reliability and performance. Anomaly detection plays an indispensable role in maintaining system health, reducing downtime, and ensuring an optimal user experience.
+
+### Alerts fatigue
+Alert fatigue is the exhaustion and desensitization that can occur when system administrators, engineers, or operations teams are overwhelmed by a high volume of alerts, many of which may be unimportant, false, or redundant.
+
+This constant stream of information can result in critical alerts being overlooked or disregarded, leading to delayed response times and potentially serious system issues going unnoticed. 
+
+Alert fatigue is not just a productivity issue—it can also have significant implications for system reliability and performance.
+
+To mitigate alert fatigue, Observability Insights must implement intelligent alerting systems that prioritize alerts based on their severity, relevance, and potential impact on the system.
+
+This includes tuning alert thresholds, grouping related alerts, and incorporating anomaly detection and machine learning to improve the accuracy and relevance of alerts.
+
+---
+
+## Observability Workflow
+This part will show how users can use OpenSearch Observability plugin to build an Observability monitoring solution and use it to further investigate and diagnose
+Alerts and incidents in the system.
+
+### Introduction of the Observability tools
+This section will give an overview description with short sample on how to use the Observability tools and API 
+   1) PPL Queries
+   2) Saved search templates
+   3) Correlation build-in queries
+   4) Alerts and monitor KPI
+   5) Logs analytics
+   6) Trace analytics
+   7) Metrics analytics
+   8) Service maps / graph
+
+### Collecting telemetry signals using different providers
+This section will show how to setup and configure the different ingestion capabilities users have to submit Observability signals into OpenSearch.
+   1) Data-prepper - Traces / Metrics
+   2) Jaeger - Traces
+   3) Fluent-bit - Logs
+
+### How do we map OTEL Demo application topology 
+
+This section will define the application services & infrastructure KPI / SLA to monitor
+   1) Services break-down and prioritization according to impact analysis - **using graph centrality calculation**
+   2) Defining the monitoring channels and alerts
+   3) SLO / SLA definitions including burn-rate. 
+   4) Dashboards Creation for selected services (RED strategy)
+   5) Main health dashboard definition
+   6) Sampling data for 'health' baseline creation
 

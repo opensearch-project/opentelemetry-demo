@@ -772,6 +772,8 @@ services:
       OPENSEARCH_HOSTS: '["https://opensearch-node1:9200","https://opensearch-node2:9200"]' # Define the OpenSearch nodes that OpenSearch Dashboards will query
     depends_on:
       - opensearch-node1
+      - opensearch-node2
+      - prometheus
 
 #   Observability OSD Integrations
   integrations:
