@@ -5,7 +5,7 @@ Use the following configuration to locally run and test the OTEL demo:
 - For additional help go [here](https://opensearch.org/docs/latest/install-and-configure/install-opensearch/docker/)
 
 ### Raise your host's ulimits:
-Rais the upper liits for OpenSearch to be able handling high I/O :
+Raise the upper limits for OpenSearch to be able handling high I/O :
 
 `sudo sysctl -w vm.max_map_count=512000`
 
