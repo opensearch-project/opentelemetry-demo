@@ -677,10 +677,11 @@ services:
       - ./src/otelcollector/otelcol-config.yml:/etc/otelcol-config.yml
       - ./src/otelcollector/otelcol-config-extras.yml:/etc/otelcol-config-extras.yml
     ports:
-      - "4317"          # OTLP over gRPC receiver
-      - "4318:4318"     # OTLP over HTTP receiver
-      - "9464"          # Prometheus exporter
-      - "8888"          # metrics endpoint
+      - "4317"            # OTLP over gRPC receiver
+      - "4318:4318"       # OTLP over HTTP receiver
+      - "13133:13133"     # health check port
+      - "9464"            # Prometheus exporter
+      - "8888"            # metrics endpoint
     depends_on:
       - jaeger-agent
       - data-prepper
