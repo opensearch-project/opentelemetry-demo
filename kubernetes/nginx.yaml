@@ -1,0 +1,75 @@
+# Copyright The OpenTelemetry Authors
+# SPDX-License-Identifier: Apache-2.0
+---
+# Nginx Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx
+  namespace: otel-demo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+        - name: nginx
+          image: nginx:latest
+          ports:
+            - containerPort: 90
+          volumeMounts:
+            - name: config-volume
+              mountPath: /etc/nginx/conf.d/default.conf
+              subPath: default.conf
+      volumes:
+        - name: config-volume
+          configMap:
+            name: nginx-config
+            items:
+              - key: default.conf
+                path: default.conf
+        - name: opentelemetry-volume
+          configMap:
+            name: nginx-config
+            items:
+              - key: opentelemetry_module.conf
+                path: opentelemetry_module.conf
+---
+# Nginx Config-map
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nginx-config
+  namespace: otel-demo
+data:
+  default.conf: |
+    server {
+      listen 90;
+
+      location / {
+         proxy_pass http://frontend:8080/;
+         proxy_set_header Host $host;
+         proxy_set_header X-Real-IP $remote_addr;
+         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+         proxy_set_header X-Forwarded-Proto $scheme;
+       }
+    }
+---
+# Nginx Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx-service
+  namespace: otel-demo
+spec:
+  selector:
+    app: nginx
+  ports:
+    - protocol: TCP
+      port: 90
+      targetPort: 90

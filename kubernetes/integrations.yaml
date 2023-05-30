@@ -1,0 +1,1497 @@
+# Copyright The OpenTelemetry Authors
+# SPDX-License-Identifier: Apache-2.0
+---
+# OpenSearch Integration loading script
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: integrations
+  namespace: otel-demo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: integrations
+  template:
+    metadata:
+      labels:
+        app: integrations
+    spec:
+      containers:
+        - name: integrations
+          image: python:3.9
+          command: ["/bin/sh", "-c"]
+          args: ["pip install -r /app/requirements.txt && python /app/install.py"]
+          volumeMounts:
+            - name: app-volume
+              mountPath: /app
+      volumes:
+        - name: app-volume
+          configMap:
+            name: integrations-config
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: integrations-config
+  namespace: otel-demo
+data:
+  requirements.txt: |
+    crhelper==2.0.11
+    requests==2.28.2
+    opensearch-py==2.2.0
+    urllib3==1.26.6
+
+  install.py: |
+    import os
+    import json
+    import logging
+    from opensearchpy import OpenSearch, RequestsHttpConnection, OpenSearchException
+    import requests
+    from requests.auth import HTTPBasicAuth
+    import os
+
+    # load env variables
+    opensearch_host = os.getenv('OPENSEARCH_HOST', 'opensearch-cluster-leader')
+    opensearch_dashboard = os.environ.get('OPENSEARCH_DASHBOARD_HOST', 'opensearch-dashboards')
+
+    # For testing only. Don't store credentials in code.
+    auth = ('{USR}', '{PSWD}')
+
+    # Configure logging
+    logging.basicConfig(format='%(asctime)s [%(levelname)s] %(message)s', level=logging.INFO)
+    logger = logging.getLogger(__name__)
+
+    # Create the client with SSL/TLS enabled, but hostname verification disabled.
+    client = OpenSearch(
+        hosts = [{'host': opensearch_host, 'port': 9200}],
+        http_compress = True, # enables gzip compression for request bodies
+        http_auth = auth,
+        use_ssl = True,
+        verify_certs = False,
+        ssl_assert_hostname = False,
+        ssl_show_warn = False
+    )
+    # verify connection to opensearch
+    # verify connection to opensearch
+    def test_connection():
+        max_retries = 30  # Maximum number of retries
+        retry_interval = 10  # Wait for 10 seconds between retries
+
+        for i in range(max_retries):
+            try:
+                response = requests.get(
+                    url=f'https://{opensearch_host}:9200/',
+                    auth=HTTPBasicAuth('{USR}', '{PSWD}'),
+                    headers={'Content-Type': 'application/json'},
+                    verify=False  # Disable SSL verification
+                )
+                response.raise_for_status()  # Raise an exception if the request failed
+                print('Successfully connected to OpenSearch')
+                return  # Exit the function if connection is successful
+            except requests.HTTPError as e:
+                logging.error(f'Failed to connect to OpenSearch, error: {str(e)}')
+
+            print(f'Attempt {i + 1} failed, waiting for {retry_interval} seconds before retrying...')
+            time.sleep(retry_interval)
+
+        print(f'Failed to connect to OpenSearch after {max_retries} attempts')
+        exit(1)  # Exit the program with an error code
+
+    # create mapping components to compose the different observability categories
+    def create_mapping_components(client):
+       mapping_dir = '../mapping-components/'
+       for filename in os.listdir(mapping_dir):
+            if filename.endswith('.mapping'):
+                with open(os.path.join(mapping_dir, filename), 'r') as f:
+                    mapping = json.load(f)
+
+                    template_name = os.path.splitext(filename)[0]  # Remove the .mapping extension
+                    print(f'About to load  template: {template_name}')
+                    # Create the component template
+                    try:
+                        response = requests.put(
+                            url=f'https://{opensearch_host}:9200/_component_template/{template_name}_template',
+                            auth=HTTPBasicAuth('{USR}', '{PSWD}'),
+                            json=mapping,
+                            verify=False,  # Disable SSL verification
+                            headers={'Content-Type': 'application/json'}
+                        )
+                        response.raise_for_status()  # Raise an exception if the request failed
+                        logger.info(f'Successfully created component template: {template_name}')
+                        print(f'Successfully created component template: {template_name}')
+                    except requests.HTTPError as e:
+                        logger.error(f'Failed to create component template: {template_name}, error: {str(e)}')
+
+    # Create the templates from the mapping content
+    def create_mapping_templates(client):
+        mapping_dir = '../mapping-templates/'
+        for filename in os.listdir(mapping_dir):
+            if filename.endswith('.mapping'):
+                with open(os.path.join(mapping_dir, filename), 'r') as f:
+                    mapping = json.load(f)
+
+                    template_name = os.path.splitext(filename)[0]  # Remove the .mapping extension
+                    print(f'About to created index template: {template_name}')
+
+                    # Create the template
+                    try:
+                        client.indices.put_index_template(name=template_name, body=mapping)
+                        print(f'Successfully created index template: {template_name}')
+                    except OpenSearchException as e:
+                        logger.error(f'Failed to create index template: {template_name}, error: {str(e)}')
+
+    # create data streams
+    def create_data_streams():
+        with open('../indices/data-stream.json', 'r') as f:
+            data = json.load(f)
+            data_streams = data.get('data-stream', [])
+
+            for ds in data_streams:
+                try:
+                    response = requests.put(
+                        url=f'https://{opensearch_host}:9200/_data_stream/{ds}',
+                        auth=HTTPBasicAuth('{USR}', '{PSWD}'),
+                        headers={'Content-Type': 'application/json'},
+                        verify=False  # Disable SSL verification
+                    )
+                    response.raise_for_status()  # Raise an exception if the request failed
+                    logger.info(f'Successfully created data stream: {ds}')
+                except requests.HTTPError as e:
+                    logger.error(f'Failed to create data stream: {ds}, error: {str(e)}')
+
+    # load dashboards in the display folder
+    def load_dashboards():
+        dashboard_dir = '../display/'
+        for filename in os.listdir(dashboard_dir):
+            if filename.endswith('.ndjson'):
+                with open(os.path.join(dashboard_dir, filename), 'r') as f:
+                    dashboard_data = f.read()
+                    dashboard_name = os.path.splitext(filename)[0]  # Remove the .json extension
+                    logger.info(f'About to load dashboard: {dashboard_name}')
+
+                    # Load the dashboard
+                    try:
+                        response = requests.post(
+                            url=f'http://{opensearch_dashboard}:5601/api/saved_objects/_import?overwrite=true',
+                            auth=HTTPBasicAuth('{USR}', '{PSWD}'),
+                            files={'file': (f'{dashboard_name}.ndjson', dashboard_data)},
+                            headers={'osd-xsrf': 'true'},
+                            verify=False  # Disable SSL verification
+                        )
+                        response.raise_for_status()  # Raise an exception if the request failed
+                        logger.info(f'Successfully loaded dashboard: {dashboard_name}')
+                        print(f'Successfully loaded: {dashboard_name}')
+                    except requests.HTTPError as e:
+                        logger.error(f'Failed to load dashboard: {dashboard_name}, error: {str(e)}')
+
+    # create the data_streams based on the list given in the data-stream.json file
+    def create_datasources():
+        datasource_dir = '../datasource/'
+        for filename in os.listdir(datasource_dir):
+            if filename.endswith('.json'):
+                with open(os.path.join(datasource_dir, filename), 'r') as f:
+                    datasource = json.load(f)
+                    try:
+                        response = requests.post(
+                            url=f'https://{opensearch_host}:9200/_plugins/_query/_datasources',
+                            auth=HTTPBasicAuth('{USR}', '{PSWD}'),
+                            json=datasource,
+                            verify=False,  # Disable SSL verification
+                            headers={'Content-Type': 'application/json'}
+                        )
+                        response.raise_for_status()  # Raise an exception if the request failed
+                        logger.info(f'Successfully created datasource: {filename}')
+                        print(f'Successfully created datasource: {filename}')
+                    except requests.HTTPError as e:
+                        print(f'Failed to create datasource: {filename}, error: {str(e)}')
+                        logger.error(f'Failed to create datasource: {filename}, error: {str(e)}')
+
+
+    if __name__ == '__main__':
+        # import all assets
+        test_connection()
+        create_mapping_components(client)
+        create_mapping_templates(client)
+        create_data_streams()
+        load_dashboards()
+        create_datasources()
+
+  prometheus.json: |
+    {
+      "name" : "prometheus",
+      "connector": "prometheus",
+      "properties" : {
+        "prometheus.uri" : "http://prometheus:9090"
+      },
+      "allowedRoles" : ["prometheus_access"]
+    }
+
+  demo-landing-page.ndjson: |-
+    {"attributes":{"description":"OTEL demo landing page","kibanaSavedObjectMeta":{"searchSourceJSON":"{\"query\":{\"query\":\"\",\"language\":\"kuery\"},\"filter\":[]}"},"title":"OTEL demo landing page","uiStateJSON":"{}","version":1,"visState":"{\"title\":\"OTEL demo landing page\",\"type\":\"markdown\",\"aggs\":[],\"params\":{\"fontSize\":12,\"openLinksInNewTab\":false,\"markdown\":\"\\n![](https://raw.githubusercontent.com/opensearch-project/.github/main/profile/banner.jpg)\\n# OpenSearch Observability OTEL Demo\\n\\nWelcome to the [OpenSearch](https://opensearch.org/docs/latest) OpenTelemetry [Demo](https://opentelemetry.io/docs/demo/) documentation, which covers how to install and run the demo, and some scenarios you can use to view OpenTelemetry in action.\\n\\n## Purpose\\nThe purpose of this demo is to demonstrate the different capabilities of OpenSearch Observability to investigate and reflect your system.\\n\\n![](../../../.github/img/DemoFlow.png)\\n\\n### Services\\n[OTEL DEMO](https://opentelemetry.io/docs/demo/services/) Describes the list of services that are composing the Astronomy Shop.\\n\\nThe main services that are open to user interactions:\\n\\n- [Dashboards](https://observability.playground.opensearch.org/)\\n\\n- [Demo Proxy](https://observability.playground.demo-proxy.opensearch.org/)\\n\\n- [Demo loader](https://observability.playground.demo-loader.opensearch.org/)\\n\\n- [Demo feature-flag](https://observability.playground.demo-feature-flag.opensearch.org/)\\n\\n### Screenshots\\n![](https://opentelemetry.io/docs/demo/screenshots/frontend-1.png)\\n\\n_**The shopping App**_\\n![](https://opentelemetry.io/docs/demo/screenshots/frontend-2.png)\\n\\n_**The feature flag**_\\n![](https://opentelemetry.io/docs/demo/screenshots/feature-flag-ui.png)\\n\\n_**The load generator**_\\n![](https://opentelemetry.io/docs/demo/screenshots/load-generator-ui.png)\\n\\n---\\n### Ingestion\\nThe ingestion capabilities for OpenSearch is to be able to support multiple pipelines:\\n- [Data-Prepper](https://github.com/opensearch-project/data-prepper/) is an OpenSearch ingestion project that allows ingestion of OTEL standard signals using Otel-Collector\\n- [Jaeger](https://opensearch.org/docs/latest/observing-your-data/trace/trace-analytics-jaeger/) is an ingestion framework which has a build in capability for pushing OTEL signals into OpenSearch\\n- [Fluent-Bit](https://docs.fluentbit.io/manual/pipeline/outputs/opensearch) is an ingestion framework which has a build in capability for pushing OTEL signals into OpenSearch\\n\\n### Integrations -\\nThe integration service is a list of pre-canned assets that are loaded in a combined manner to allow users the ability for simple and automatic way to discover and review their services topology.\\n\\nThese (demo-sample) integrations contain the following assets:\\n- components & index template mapping\\n- datasources\\n- data-stream & indices\\n- queries\\n- dashboards\\n   \\n\"}}"},"id":"dd4bebe0-f66a-11ed-9518-f5d5eb1d70bf","migrationVersion":{"visualization":"7.10.0"},"references":[],"type":"visualization","updated_at":"2023-05-19T17:30:35.804Z","version":"WzM0LDJd"}
+    {"attributes":{"description":"OTEL demo landing page","hits":0,"kibanaSavedObjectMeta":{"searchSourceJSON":"{\"query\":{\"language\":\"kuery\",\"query\":\"\"},\"filter\":[]}"},"optionsJSON":"{\"hidePanelTitles\":false,\"useMargins\":true}","panelsJSON":"[{\"version\":\"2.7.0\",\"gridData\":{\"x\":0,\"y\":0,\"w\":24,\"h\":15,\"i\":\"0e0c418a-81f8-4d85-8ba7-8d8ef6e2b1d7\"},\"panelIndex\":\"0e0c418a-81f8-4d85-8ba7-8d8ef6e2b1d7\",\"embeddableConfig\":{},\"panelRefName\":\"panel_0\"}]","timeRestore":false,"title":"OTEL demo landing page","version":1},"id":"e66e2da0-f66a-11ed-9518-f5d5eb1d70bf","migrationVersion":{"dashboard":"7.9.3"},"references":[{"id":"dd4bebe0-f66a-11ed-9518-f5d5eb1d70bf","name":"panel_0","type":"visualization"}],"type":"dashboard","updated_at":"2023-05-19T17:30:51.130Z","version":"WzM1LDJd"}
+    {"exportedCount":2,"missingRefCount":0,"missingReferences":[]}
+  memory-leak-tutorial.ndjson: |-
+    {"attributes":{"description":"this Pattern present a memory leak diagnostic procedure tutorial","kibanaSavedObjectMeta":{"searchSourceJSON":"{\"query\":{\"query\":\"\",\"language\":\"kuery\"},\"filter\":[]}"},"title":"mem-leak-diagnostic","uiStateJSON":"{}","version":1,"visState":"{\"title\":\"mem-leak-diagnostic\",\"type\":\"markdown\",\"aggs\":[],\"params\":{\"fontSize\":12,\"openLinksInNewTab\":false,\"markdown\":\"# Memory Leak Investigation Tutorial\\n\\n## Tutorial Definition\\n\\nThe following tutorial describes Using Metrics and Traces to diagnose a memory leak\\nApplication telemetry, such as the kind that OpenTelemetry can provide, is very useful for diagnosing issues in a\\ndistributed system. In this scenario, we will walk through a scenario demonstrating how to move from high-level metrics\\nand traces to determine the cause of a memory leak.\\n\\n## Diagnosis\\n\\nThe first step in diagnosing a problem is to determine that a problem exists. Often the first stop will be a metrics\\ndashboard provided by a tool such as metrics analytics under open search observability.\\n\\n## Dashboards\\n\\nThis tutorial contains the OTEL demo dashboards with a number of charts:\\n\\n- Recommendation Service (CPU% and Memory)\\n- Service Latency (from SpanMetrics)\\n- Error Rate\\n\\nRecommendation Service charts are generated from OpenTelemetry Metrics exported to Prometheus, while the Service Latency\\nand Error Rate charts are generated through the OpenTelemetry Collector Span Metrics processor.\\n\\nFrom our dashboard, we can see that there seems to be anomalous behavior in the recommendation service – spiky CPU\\nutilization, as well as long tail latency in our p95, 99, and 99.9 histograms. We can also see that there are\\nintermittent spikes in the memory utilization of this service.\\nWe know that we’re emitting trace data from our application as well, so let’s think about another way that we’d be able\\nto determine that a problem exist.\\n\\n### Traces exploration\\n\\nOpenSearch Observability Trace analytics allows us to search for traces and display the end-to-end latency of an entire\\nrequest with visibility into each individual part of the overall request. Perhaps we noticed an increase in tail latency\\non our frontend requests. Traces dashboard allows us to then search and filter our traces to include only those that\\ninclude requests to recommendation service.\\n\\nBy sorting by latency, we’re able to quickly find specific traces that took a long time. Clicking on a trace in the\\nright panel, we’re able to view the waterfall view.\\nWe can see that the recommendation service is taking a long time to complete its work, and viewing the details allows us\\nto get a better idea of what’s going on.\\n\\n### Confirming the Diagnosis\\n\\nWe can see in our waterfall view that the app.cache_hit attribute is set to false, and that the `app.products.count` value\\nis extremely high.\\n\\nReturning to the search UI, filter to `recommendationservice` in the Service dropdown, and search for app.cache_hit=true\\nin the Tags box.\\n\\nNotice that requests tend to be faster when the cache is hit. Now search for `app.cache_hit=false` and compare the\\nlatency.\\n\\nYou should notice some changes in the visualization at the top of the trace list.\\n\\nNow, since this is a contrived scenario, we know where to find the underlying bug in our code. However, in a real-world\\nscenario, we may need to perform further searching to find out what’s going on in our code, or the interactions between\\nservices that cause it.\\n\\n### SOP flow context aware\\n\\nThe next diagram shows the context aware phases within this SOP.\\n\\nThe user can be shown the summary of the flow for solving his issue and in addition can focus on the actual step he is\\ncurrently performing.\\n\\nThe overall process is mapped into a **state machine** in-which each step has a state with a **transition**.\\n\\nWhen user goes into a different **scope** (`time based` ,`service based`, `log based`) this is defined as a indexed Context (`Ctx[1]`,`Ctx[2]`,...)\\n\\n---\\n\\nThis sequence outlines a process for investigating memory leaks that begins with gathering service data from both Prometheus and OpenSearch. Upon combining and reviewing latency of these services, an anomaly detection leads to a review of service traces, followed by log correlation, log fetching, and eventually an overlay of logs to highlight differences.\\n\\n```mermaid\\n Info[Memory Leak Investigation]\\n    |\\n    V\\nGet All Services --> Query?[Prometheus]\\n    |                     |\\n    |                     V\\n    |--> Query?[OpenSearch]\\n    |                     |\\n    V                     V\\nCombine --> Review[Services Latency]\\n    |\\n    V\\nIdentify Anomaly --> Query?[Service@traces]\\n    |                     |\\n    |                     V\\n    |--> Time Based --> Review[Services traces]\\n    |                     |\\n    V                     V\\nWhats Next? --> Suggest[Correlation with logs]\\n    |                     |\\n    |                     V\\n    |--> Fetch Logs --> Review[logs]\\n    |                     |\\n    V                     V\\nWhats Next? --> Suggest[logs overlay]\\n    |                     |\\n    |                     V\\n    |--> Fetch Logs --> Review[logs diff]\\n    |                     |\\n    V                     V\\nEnd <------------------ End\\n\\n```\\n\"}}"},"id":"92546710-f751-11ed-b6d0-850581e4a72d","migrationVersion":{"visualization":"7.10.0"},"references":[],"type":"visualization","updated_at":"2023-05-20T21:02:03.776Z","version":"WzUxLDVd"}
+    {"attributes":{"description":"this Pattern present a memory leak diagnostic procedure tutorial","hits":0,"kibanaSavedObjectMeta":{"searchSourceJSON":"{\"query\":{\"language\":\"kuery\",\"query\":\"\"},\"filter\":[]}"},"optionsJSON":"{\"hidePanelTitles\":false,\"useMargins\":true}","panelsJSON":"[{\"version\":\"2.7.0\",\"gridData\":{\"x\":0,\"y\":0,\"w\":24,\"h\":15,\"i\":\"a1954dc7-8655-4ea8-9a75-67cbe201b80c\"},\"panelIndex\":\"a1954dc7-8655-4ea8-9a75-67cbe201b80c\",\"embeddableConfig\":{},\"panelRefName\":\"panel_0\"}]","timeRestore":false,"title":"mem-leak-dignostic","version":1},"id":"9aa66080-f751-11ed-b6d0-850581e4a72d","migrationVersion":{"dashboard":"7.9.3"},"references":[{"id":"92546710-f751-11ed-b6d0-850581e4a72d","name":"panel_0","type":"visualization"}],"type":"dashboard","updated_at":"2023-05-20T21:02:17.736Z","version":"WzUyLDVd"}
+    {"exportedCount":2,"missingRefCount":0,"missingReferences":[]}
+  nginx-logs-dashboard-new.ndjson: |-
+    {"attributes":{"fields":"[{\"count\":0,\"name\":\"@timestamp\",\"type\":\"date\",\"esTypes\":[\"date\"],\"scripted\":false,\"searchable\":true,\"aggregatable\":true,\"readFromDocValues\":true},{\"count\":0,\"name\":\"_id\",\"type\":\"string\",\"esTypes\":[\"_id\"],\"scripted\":false,\"searchable\":true,\"aggregatable\":true,\"readFromDocValues\":false},{\"count\":0,\"name\":\"_index\",\"type\":\"string\",\"esTypes\":[\"_index\"],\"scripted\":false,\"searchable\":true,\"aggregatable\":true,\"readFromDocValues\":false},{\"count\":0,\"name\":\"_score\",\"type\":\"number\",\"scripted\":false,\"searchable\":false,\"aggregatable\":false,\"readFromDocValues\":false},{\"count\":0,\"name\":\"_source\",\"type\":\"_source\",\"esTypes\":[\"_source\"],\"scripted\":false,\"searchable\":false,\"aggregatable\":false,\"readFromDocValues\":false},{\"count\":0,\"name\":\"_type\",\"type\":\"string\",\"scripted\":false,\"searchable\":false,\"aggregatable\":false,\"readFromDocValues\":false},{\"count\":0,\"name\":\"attributes.data_stream.dataset\",\"type\":\"string\",\"esTypes\":[\"text\"],\"scripted\":false,\"searchable\":true,\"aggregatable\":false,\"readFromDocValues\":false},{\"count\":0,\"name\":\"attributes.data_stream.dataset.keyword\",\"type\":\"string\",\"esTypes\":[\"keyword\"],\"scripted\":false,\"searchable\":true,\"aggregatable\":true,\"readFromDocValues\":true,\"subType\":{\"multi\":{\"parent\":\"attributes.data_stream.dataset\"}}},{\"count\":0,\"name\":\"attributes.data_stream.namespace\",\"type\":\"string\",\"esTypes\":[\"text\"],\"scripted\":false,\"searchable\":true,\"aggregatable\":false,\"readFromDocValues\":false},{\"count\":0,\"name\":\"attributes.data_stream.namespace.keyword\",\"type\":\"string\",\"esTypes\":[\"keyword\"],\"scripted\":false,\"searchable\":true,\"aggregatable\":true,\"readFromDocValues\":true,\"subType\":{\"multi\":{\"parent\":\"attributes.data_stream.namespace\"}}},{\"count\":0,\"name\":\"attributes.data_stream.type\",\"type\":\"string\",\"esTypes\":[\"text\"],\"scripted\":false,\"searchable\":true,\"aggregatable\":false,\"readFromDocValues\":false},{\"count\":0,\"name\":\"attributes.data_stream.type.keyword\",\"type\":\"string\",\"esTypes\":[\"keyword\"],\"scripted\":false,\"searchable\":true,\"aggregatable\":true,\"readFromDocValues\":true,\"subType\":{\"multi\":{\"parent\":\"attributes.data_stream.type\"}}},{\"count\":0,\"name\":\"body\",\"type\":\"string\",\"esTypes\":[\"text\"],\"scripted\":false,\"searchable\":true,\"aggregatable\":false,\"readFromDocValues\":false},{\"count\":0,\"name\":\"body.keyword\",\"type\":\"string\",\"esTypes\":[\"keyword\"],\"scripted\":false,\"searchable\":true,\"aggregatable\":true,\"readFromDocValues\":true,\"subType\":{\"multi\":{\"parent\":\"body\"}}},{\"count\":0,\"name\":\"communication.source.address\",\"type\":\"string\",\"esTypes\":[\"text\"],\"scripted\":false,\"searchable\":true,\"aggregatable\":false,\"readFromDocValues\":false},{\"count\":0,\"name\":\"communication.source.address.keyword\",\"type\":\"string\",\"esTypes\":[\"keyword\"],\"scripted\":false,\"searchable\":true,\"aggregatable\":true,\"readFromDocValues\":true,\"subType\":{\"multi\":{\"parent\":\"communication.source.address\"}}},{\"count\":0,\"name\":\"communication.source.ip\",\"type\":\"string\",\"esTypes\":[\"text\"],\"scripted\":false,\"searchable\":true,\"aggregatable\":false,\"readFromDocValues\":false},{\"count\":0,\"name\":\"communication.source.ip.keyword\",\"type\":\"string\",\"esTypes\":[\"keyword\"],\"scripted\":false,\"searchable\":true,\"aggregatable\":true,\"readFromDocValues\":true,\"subType\":{\"multi\":{\"parent\":\"communication.source.ip\"}}},{\"count\":0,\"name\":\"event.category\",\"type\":\"string\",\"esTypes\":[\"text\"],\"scripted\":false,\"searchable\":true,\"aggregatable\":false,\"readFromDocValues\":false},{\"count\":0,\"name\":\"event.category.keyword\",\"type\":\"string\",\"esTypes\":[\"keyword\"],\"scripted\":false,\"searchable\":true,\"aggregatable\":true,\"readFromDocValues\":true,\"subType\":{\"multi\":{\"parent\":\"event.category\"}}},{\"count\":0,\"name\":\"event.domain\",\"type\":\"string\",\"esTypes\":[\"text\"],\"scripted\":false,\"searchable\":true,\"aggregatable\":false,\"readFromDocValues\":false},{\"count\":0,\"name\":\"event.domain.keyword\",\"type\":\"string\",\"esTypes\":[\"keyword\"],\"scripted\":false,\"searchable\":true,\"aggregatable\":true,\"readFromDocValues\":true,\"subType\":{\"multi\":{\"parent\":\"event.domain\"}}},{\"count\":0,\"name\":\"event.kind\",\"type\":\"string\",\"esTypes\":[\"text\"],\"scripted\":false,\"searchable\":true,\"aggregatable\":false,\"readFromDocValues\":false},{\"count\":0,\"name\":\"event.kind.keyword\",\"type\":\"string\",\"esTypes\":[\"keyword\"],\"scripted\":false,\"searchable\":true,\"aggregatable\":true,\"readFromDocValues\":true,\"subType\":{\"multi\":{\"parent\":\"event.kind\"}}},{\"count\":0,\"name\":\"event.name\",\"type\":\"string\",\"esTypes\":[\"text\"],\"scripted\":false,\"searchable\":true,\"aggregatable\":false,\"readFromDocValues\":false},{\"count\":0,\"name\":\"event.name.keyword\",\"type\":\"string\",\"esTypes\":[\"keyword\"],\"scripted\":false,\"searchable\":true,\"aggregatable\":true,\"readFromDocValues\":true,\"subType\":{\"multi\":{\"parent\":\"event.name\"}}},{\"count\":0,\"name\":\"event.result\",\"type\":\"string\",\"esTypes\":[\"text\"],\"scripted\":false,\"searchable\":true,\"aggregatable\":false,\"readFromDocValues\":false},{\"count\":0,\"name\":\"event.result.keyword\",\"type\":\"string\",\"esTypes\":[\"keyword\"],\"scripted\":false,\"searchable\":true,\"aggregatable\":true,\"readFromDocValues\":true,\"subType\":{\"multi\":{\"parent\":\"event.result\"}}},{\"count\":0,\"name\":\"event.type\",\"type\":\"string\",\"esTypes\":[\"text\"],\"scripted\":false,\"searchable\":true,\"aggregatable\":false,\"readFromDocValues\":false},{\"count\":0,\"name\":\"event.type.keyword\",\"type\":\"string\",\"esTypes\":[\"keyword\"],\"scripted\":false,\"searchable\":true,\"aggregatable\":true,\"readFromDocValues\":true,\"subType\":{\"multi\":{\"parent\":\"event.type\"}}},{\"count\":0,\"name\":\"http.flavor\",\"type\":\"string\",\"esTypes\":[\"text\"],\"scripted\":false,\"searchable\":true,\"aggregatable\":false,\"readFromDocValues\":false},{\"count\":0,\"name\":\"http.flavor.keyword\",\"type\":\"string\",\"esTypes\":[\"keyword\"],\"scripted\":false,\"searchable\":true,\"aggregatable\":true,\"readFromDocValues\":true,\"subType\":{\"multi\":{\"parent\":\"http.flavor\"}}},{\"count\":0,\"name\":\"http.request.method\",\"type\":\"string\",\"esTypes\":[\"text\"],\"scripted\":false,\"searchable\":true,\"aggregatable\":false,\"readFromDocValues\":false},{\"count\":0,\"name\":\"http.request.method.keyword\",\"type\":\"string\",\"esTypes\":[\"keyword\"],\"scripted\":false,\"searchable\":true,\"aggregatable\":true,\"readFromDocValues\":true,\"subType\":{\"multi\":{\"parent\":\"http.request.method\"}}},{\"count\":0,\"name\":\"http.response.bytes\",\"type\":\"number\",\"esTypes\":[\"long\"],\"scripted\":false,\"searchable\":true,\"aggregatable\":true,\"readFromDocValues\":true},{\"count\":0,\"name\":\"http.response.status_code\",\"type\":\"string\",\"esTypes\":[\"text\"],\"scripted\":false,\"searchable\":true,\"aggregatable\":false,\"readFromDocValues\":false},{\"count\":0,\"name\":\"http.response.status_code.keyword\",\"type\":\"string\",\"esTypes\":[\"keyword\"],\"scripted\":false,\"searchable\":true,\"aggregatable\":true,\"readFromDocValues\":true,\"subType\":{\"multi\":{\"parent\":\"http.response.status_code\"}}},{\"count\":0,\"name\":\"http.url\",\"type\":\"string\",\"esTypes\":[\"text\"],\"scripted\":false,\"searchable\":true,\"aggregatable\":false,\"readFromDocValues\":false},{\"count\":0,\"name\":\"http.url\",\"type\":\"string\",\"esTypes\":[\"keyword\"],\"scripted\":false,\"searchable\":true,\"aggregatable\":true,\"readFromDocValues\":true,\"subType\":{\"multi\":{\"parent\":\"http.url\"}}},{\"count\":0,\"name\":\"observerTime\",\"type\":\"date\",\"esTypes\":[\"date\"],\"scripted\":false,\"searchable\":true,\"aggregatable\":true,\"readFromDocValues\":true},{\"count\":0,\"name\":\"span_id\",\"type\":\"string\",\"esTypes\":[\"text\"],\"scripted\":false,\"searchable\":true,\"aggregatable\":false,\"readFromDocValues\":false},{\"count\":0,\"name\":\"span_id.keyword\",\"type\":\"string\",\"esTypes\":[\"keyword\"],\"scripted\":false,\"searchable\":true,\"aggregatable\":true,\"readFromDocValues\":true,\"subType\":{\"multi\":{\"parent\":\"span_id\"}}},{\"count\":0,\"name\":\"trace_id\",\"type\":\"string\",\"esTypes\":[\"text\"],\"scripted\":false,\"searchable\":true,\"aggregatable\":false,\"readFromDocValues\":false},{\"count\":0,\"name\":\"trace_id.keyword\",\"type\":\"string\",\"esTypes\":[\"keyword\"],\"scripted\":false,\"searchable\":true,\"aggregatable\":true,\"readFromDocValues\":true,\"subType\":{\"multi\":{\"parent\":\"trace_id\"}}}]","timeFieldName":"@timestamp","title":"sso_logs-*-*"},"id":"47892350-b495-11ed-af0a-cf5c93b5a3b6","migrationVersion":{"index-pattern":"7.6.0"},"references":[],"type":"index-pattern","updated_at":"2023-05-14T04:42:35.935Z","version":"WzgwLDFd"}
+    {"attributes":{"columns":["http.request.method","http.response.status_code"],"description":"","hits":0,"kibanaSavedObjectMeta":{"searchSourceJSON":"{\n  \"highlightAll\": true,\n  \"version\": true,\n  \"query\": {\n    \"query\": \"event.domain:nginx.access\",\n    \"language\": \"kuery\"\n  },\n  \"filter\": [],\n  \"indexRefName\": \"kibanaSavedObjectMeta.searchSourceJSON.index\"\n}"},"sort":[],"title":"[NGINX Core Logs 1.0] Nginx Access Logs","version":1},"id":"d80e05b2-518c-4c3d-9651-4c9d8632dce4","migrationVersion":{"search":"7.9.3"},"references":[{"id":"47892350-b495-11ed-af0a-cf5c93b5a3b6","name":"kibanaSavedObjectMeta.searchSourceJSON.index","type":"index-pattern"}],"type":"search","updated_at":"2023-05-14T04:42:35.935Z","version":"WzgxLDFd"}
+    {"attributes":{"description":"","kibanaSavedObjectMeta":{"searchSourceJSON":"{\"query\":{\"query\":\"\",\"language\":\"lucene\"},\"filter\":[]}"},"savedSearchRefName":"search_0","title":"[NGINX Core Logs 1.0] Response codes over time","uiStateJSON":"{}","version":1,"visState":"{\"title\":\"[NGINX Core Logs 1.0] Response codes over time\",\"type\":\"histogram\",\"aggs\":[{\"id\":\"1\",\"enabled\":true,\"type\":\"count\",\"params\":{},\"schema\":\"metric\"},{\"id\":\"2\",\"enabled\":true,\"type\":\"date_histogram\",\"params\":{\"field\":\"@timestamp\",\"timeRange\":{\"from\":\"now-24h\",\"to\":\"now\"},\"useNormalizedOpenSearchInterval\":true,\"scaleMetricValues\":false,\"interval\":\"auto\",\"drop_partials\":false,\"min_doc_count\":1,\"extended_bounds\":{}},\"schema\":\"segment\"},{\"id\":\"3\",\"enabled\":true,\"type\":\"filters\",\"params\":{\"filters\":[{\"input\":{\"query\":\"http.response.status_code:[200 TO 299]\",\"language\":\"lucene\"},\"label\":\"200s\"},{\"input\":{\"query\":\"http.response.status_code:[300 TO 399]\",\"language\":\"lucene\"},\"label\":\"300s\"},{\"input\":{\"query\":\"http.response.status_code:[400 TO 499]\",\"language\":\"lucene\"},\"label\":\"400s\"},{\"input\":{\"query\":\"http.response.status_code:[500 TO 599]\",\"language\":\"lucene\"},\"label\":\"500s\"},{\"input\":{\"query\":\"http.response.status_code:0\",\"language\":\"lucene\"},\"label\":\"0\"}]},\"schema\":\"group\"}],\"params\":{\"type\":\"histogram\",\"grid\":{\"categoryLines\":false},\"categoryAxes\":[{\"id\":\"CategoryAxis-1\",\"type\":\"category\",\"position\":\"bottom\",\"show\":true,\"style\":{},\"scale\":{\"type\":\"linear\"},\"labels\":{\"show\":true,\"filter\":true,\"truncate\":100},\"title\":{}}],\"valueAxes\":[{\"id\":\"ValueAxis-1\",\"name\":\"LeftAxis-1\",\"type\":\"value\",\"position\":\"left\",\"show\":true,\"style\":{},\"scale\":{\"type\":\"linear\",\"mode\":\"normal\"},\"labels\":{\"show\":true,\"rotate\":0,\"filter\":false,\"truncate\":100},\"title\":{\"text\":\"Count\"}}],\"seriesParams\":[{\"show\":true,\"type\":\"histogram\",\"mode\":\"stacked\",\"data\":{\"label\":\"Count\",\"id\":\"1\"},\"valueAxis\":\"ValueAxis-1\",\"drawLinesBetweenPoints\":true,\"lineWidth\":2,\"showCircles\":true}],\"addTooltip\":true,\"addLegend\":true,\"legendPosition\":\"right\",\"times\":[],\"addTimeMarker\":false,\"labels\":{\"show\":false},\"thresholdLine\":{\"show\":false,\"value\":10,\"width\":1,\"style\":\"full\",\"color\":\"#E7664C\"}}}"},"id":"3b49a65d-54d8-483d-a8f0-3d7c855e1ecf","migrationVersion":{"visualization":"7.10.0"},"references":[{"id":"d80e05b2-518c-4c3d-9651-4c9d8632dce4","name":"search_0","type":"search"}],"type":"visualization","updated_at":"2023-05-14T04:42:35.935Z","version":"WzgyLDFd"}
+    {"attributes":{"columns":["_source"],"description":"","hits":0,"kibanaSavedObjectMeta":{"searchSourceJSON":"{\n  \"highlightAll\": true,\n  \"query\": {\n    \"query\": \"http.response.status_code >= 300 and event.domain:nginx.access\",\n    \"language\": \"kuery\"\n  },\n  \"version\": true,\n  \"highlight\": {\n    \"post_tags\": [\n      \"@/kibana-highlighted-field@\"\n    ],\n    \"fields\": {\n      \"*\": {}\n    },\n    \"pre_tags\": [\n      \"@kibana-highlighted-field@\"\n    ],\n    \"require_field_match\": false,\n    \"fragment_size\": 2147483647\n  },\n  \"filter\": [],\n  \"indexRefName\": \"kibanaSavedObjectMeta.searchSourceJSON.index\"\n}"},"sort":[["@timestamp","desc"]],"title":"[NGINX Core Logs 1.0] Nginx Error Logs","version":1},"id":"9f820fbe-ddde-43a2-9402-30bd295c97f6","migrationVersion":{"search":"7.9.3"},"references":[{"id":"47892350-b495-11ed-af0a-cf5c93b5a3b6","name":"kibanaSavedObjectMeta.searchSourceJSON.index","type":"index-pattern"}],"type":"search","updated_at":"2023-05-14T04:42:35.935Z","version":"WzgzLDFd"}
+    {"attributes":{"description":"","kibanaSavedObjectMeta":{"searchSourceJSON":"{\"query\":{\"query\":\"\",\"language\":\"lucene\"},\"filter\":[]}"},"savedSearchRefName":"search_0","title":"[NGINX Core Logs 1.0] Errors over time","uiStateJSON":"{}","version":1,"visState":"{\"title\":\"[NGINX Core Logs 1.0] Errors over time\",\"type\":\"histogram\",\"aggs\":[{\"id\":\"1\",\"enabled\":true,\"type\":\"count\",\"params\":{},\"schema\":\"metric\"},{\"id\":\"2\",\"enabled\":true,\"type\":\"date_histogram\",\"params\":{\"field\":\"@timestamp\",\"timeRange\":{\"from\":\"now-24h\",\"to\":\"now\"},\"useNormalizedOpenSearchInterval\":true,\"scaleMetricValues\":false,\"interval\":\"auto\",\"drop_partials\":false,\"min_doc_count\":1,\"extended_bounds\":{}},\"schema\":\"segment\"}],\"params\":{\"type\":\"histogram\",\"grid\":{\"categoryLines\":false},\"categoryAxes\":[{\"id\":\"CategoryAxis-1\",\"type\":\"category\",\"position\":\"bottom\",\"show\":true,\"style\":{},\"scale\":{\"type\":\"linear\"},\"labels\":{\"show\":true,\"filter\":true,\"truncate\":100},\"title\":{}}],\"valueAxes\":[{\"id\":\"ValueAxis-1\",\"name\":\"LeftAxis-1\",\"type\":\"value\",\"position\":\"left\",\"show\":true,\"style\":{},\"scale\":{\"type\":\"linear\",\"mode\":\"normal\"},\"labels\":{\"show\":true,\"rotate\":0,\"filter\":false,\"truncate\":100},\"title\":{\"text\":\"Count\"}}],\"seriesParams\":[{\"show\":true,\"type\":\"histogram\",\"mode\":\"stacked\",\"data\":{\"label\":\"Count\",\"id\":\"1\"},\"valueAxis\":\"ValueAxis-1\",\"drawLinesBetweenPoints\":true,\"lineWidth\":2,\"showCircles\":true}],\"addTooltip\":true,\"addLegend\":true,\"legendPosition\":\"right\",\"times\":[],\"addTimeMarker\":false,\"labels\":{\"show\":false},\"thresholdLine\":{\"show\":false,\"value\":10,\"width\":1,\"style\":\"full\",\"color\":\"#E7664C\"}}}"},"id":"865e577b-634b-4a65-b9d6-7e324c395d18","migrationVersion":{"visualization":"7.10.0"},"references":[{"id":"9f820fbe-ddde-43a2-9402-30bd295c97f6","name":"search_0","type":"search"}],"type":"visualization","updated_at":"2023-05-14T04:42:35.935Z","version":"Wzg0LDFd"}
+    {"attributes":{"description":"","kibanaSavedObjectMeta":{"searchSourceJSON":"{\"query\":{\"query\":\"\",\"language\":\"kuery\"},\"filter\":[]}"},"savedSearchRefName":"search_0","title":"Top Paths","uiStateJSON":"{}","version":1,"visState":"{\"title\":\"Top Paths\",\"type\":\"table\",\"aggs\":[{\"id\":\"1\",\"enabled\":true,\"type\":\"count\",\"params\":{},\"schema\":\"metric\"},{\"id\":\"2\",\"enabled\":true,\"type\":\"terms\",\"params\":{\"field\":\"http.url\",\"orderBy\":\"1\",\"order\":\"desc\",\"size\":10,\"otherBucket\":false,\"otherBucketLabel\":\"Other\",\"missingBucket\":false,\"missingBucketLabel\":\"Missing\",\"customLabel\":\"Paths\"},\"schema\":\"bucket\"}],\"params\":{\"perPage\":10,\"showPartialRows\":false,\"showMetricsAtAllLevels\":false,\"showTotal\":false,\"totalFunc\":\"sum\",\"percentageCol\":\"\"}}"},"id":"dc1803f0-b478-11ed-9063-ebe46f9ac203","migrationVersion":{"visualization":"7.10.0"},"references":[{"id":"d80e05b2-518c-4c3d-9651-4c9d8632dce4","name":"search_0","type":"search"}],"type":"visualization","updated_at":"2023-05-14T04:42:35.935Z","version":"Wzg1LDFd"}
+    {"attributes":{"description":"","kibanaSavedObjectMeta":{"searchSourceJSON":"{\"query\":{\"query\":\"\",\"language\":\"kuery\"},\"filter\":[]}"},"savedSearchRefName":"search_0","title":"Data Volume","uiStateJSON":"{}","version":1,"visState":"{\"title\":\"Data Volume\",\"type\":\"area\",\"aggs\":[{\"id\":\"1\",\"enabled\":true,\"type\":\"sum\",\"params\":{\"field\":\"http.response.bytes\",\"customLabel\":\"Response Bytes\"},\"schema\":\"metric\"},{\"id\":\"2\",\"enabled\":true,\"type\":\"date_histogram\",\"params\":{\"field\":\"observerTime\",\"timeRange\":{\"from\":\"now-15m\",\"to\":\"now\"},\"useNormalizedOpenSearchInterval\":true,\"scaleMetricValues\":false,\"interval\":\"auto\",\"drop_partials\":false,\"min_doc_count\":1,\"extended_bounds\":{},\"customLabel\":\"\"},\"schema\":\"segment\"}],\"params\":{\"type\":\"area\",\"grid\":{\"categoryLines\":false},\"categoryAxes\":[{\"id\":\"CategoryAxis-1\",\"type\":\"category\",\"position\":\"bottom\",\"show\":true,\"style\":{},\"scale\":{\"type\":\"linear\"},\"labels\":{\"show\":true,\"filter\":true,\"truncate\":100},\"title\":{}}],\"valueAxes\":[{\"id\":\"ValueAxis-1\",\"name\":\"LeftAxis-1\",\"type\":\"value\",\"position\":\"left\",\"show\":true,\"style\":{},\"scale\":{\"type\":\"linear\",\"mode\":\"normal\"},\"labels\":{\"show\":true,\"rotate\":0,\"filter\":false,\"truncate\":100},\"title\":{\"text\":\"Response Bytes\"}}],\"seriesParams\":[{\"show\":true,\"type\":\"area\",\"mode\":\"stacked\",\"data\":{\"label\":\"Response Bytes\",\"id\":\"1\"},\"drawLinesBetweenPoints\":true,\"lineWidth\":2,\"showCircles\":true,\"interpolate\":\"linear\",\"valueAxis\":\"ValueAxis-1\"}],\"addTooltip\":true,\"addLegend\":true,\"legendPosition\":\"right\",\"times\":[],\"addTimeMarker\":false,\"thresholdLine\":{\"show\":false,\"value\":10,\"width\":1,\"style\":\"full\",\"color\":\"#E7664C\"},\"labels\":{}}}"},"id":"99acc580-b47a-11ed-9063-ebe46f9ac203","migrationVersion":{"visualization":"7.10.0"},"references":[{"id":"d80e05b2-518c-4c3d-9651-4c9d8632dce4","name":"search_0","type":"search"}],"type":"visualization","updated_at":"2023-05-14T04:42:35.935Z","version":"Wzg2LDFd"}
+    {"attributes":{"description":"requests per minute aggregation","kibanaSavedObjectMeta":{"searchSourceJSON":"{\"query\":{\"query\":\"\",\"language\":\"kuery\"},\"filter\":[],\"indexRefName\":\"kibanaSavedObjectMeta.searchSourceJSON.index\"}"},"title":"Req-per-min","uiStateJSON":"{}","version":1,"visState":"{\"title\":\"Req-per-min\",\"type\":\"table\",\"aggs\":[{\"id\":\"1\",\"enabled\":true,\"type\":\"moving_avg\",\"params\":{\"metricAgg\":\"custom\",\"customMetric\":{\"id\":\"1-metric\",\"enabled\":true,\"type\":\"count\",\"params\":{}},\"window\":5,\"script\":\"MovingFunctions.unweightedAvg(values)\"},\"schema\":\"metric\"},{\"id\":\"2\",\"enabled\":true,\"type\":\"date_histogram\",\"params\":{\"field\":\"@timestamp\",\"timeRange\":{\"from\":\"2023-02-24T17:25:00.000Z\",\"to\":\"2023-02-24T17:30:00.000Z\"},\"useNormalizedOpenSearchInterval\":true,\"scaleMetricValues\":false,\"interval\":\"m\",\"drop_partials\":false,\"min_doc_count\":0,\"extended_bounds\":{},\"customLabel\":\"Req/Min\"},\"schema\":\"bucket\"}],\"params\":{\"perPage\":10,\"showPartialRows\":false,\"showMetricsAtAllLevels\":false,\"showTotal\":false,\"totalFunc\":\"sum\",\"percentageCol\":\"\"}}"},"id":"01ea64d0-b62f-11ed-a677-43d7aa86763b","migrationVersion":{"visualization":"7.10.0"},"references":[{"id":"47892350-b495-11ed-af0a-cf5c93b5a3b6","name":"kibanaSavedObjectMeta.searchSourceJSON.index","type":"index-pattern"}],"type":"visualization","updated_at":"2023-05-14T04:42:35.935Z","version":"Wzg3LDFd"}
+    {"attributes":{"description":"Nginx dashboard with basic Observability on access / error logs","hits":0,"kibanaSavedObjectMeta":{"searchSourceJSON":"{\"query\":{\"query\":\"\",\"language\":\"kuery\"},\"filter\":[]}"},"optionsJSON":"{\"hidePanelTitles\":false,\"useMargins\":true}","panelsJSON":"[{\"version\":\"2.5.0\",\"gridData\":{\"h\":8,\"i\":\"1f31e50b-06e3-41e6-972e-e4e5fe1a9872\",\"w\":48,\"x\":0,\"y\":0},\"panelIndex\":\"1f31e50b-06e3-41e6-972e-e4e5fe1a9872\",\"embeddableConfig\":{},\"panelRefName\":\"panel_0\"},{\"version\":\"2.5.0\",\"gridData\":{\"h\":9,\"i\":\"d91a8da4-b34b-470a-aca6-9c76b47cd6fb\",\"w\":24,\"x\":0,\"y\":8},\"panelIndex\":\"d91a8da4-b34b-470a-aca6-9c76b47cd6fb\",\"embeddableConfig\":{},\"panelRefName\":\"panel_1\"},{\"version\":\"2.5.0\",\"gridData\":{\"h\":15,\"i\":\"27149e5a-3a77-4f3c-800e-8a160c3765f4\",\"w\":24,\"x\":24,\"y\":8},\"panelIndex\":\"27149e5a-3a77-4f3c-800e-8a160c3765f4\",\"embeddableConfig\":{},\"panelRefName\":\"panel_2\"},{\"version\":\"2.5.0\",\"gridData\":{\"x\":0,\"y\":17,\"w\":24,\"h\":15,\"i\":\"4d8c2aa7-159c-4a1a-80ff-00a9299056ce\"},\"panelIndex\":\"4d8c2aa7-159c-4a1a-80ff-00a9299056ce\",\"embeddableConfig\":{},\"panelRefName\":\"panel_3\"},{\"version\":\"2.5.0\",\"gridData\":{\"x\":24,\"y\":23,\"w\":24,\"h\":15,\"i\":\"800b7f19-f50c-417f-8987-21b930531cbe\"},\"panelIndex\":\"800b7f19-f50c-417f-8987-21b930531cbe\",\"embeddableConfig\":{},\"panelRefName\":\"panel_4\"}]","refreshInterval":{"pause":true,"value":0},"timeFrom":"2023-02-24T17:18:00.000Z","timeRestore":true,"timeTo":"2023-02-24T17:18:30.000Z","title":"[NGINX Core Logs] Overview","version":1},"id":"96847220-5261-44d0-89b4-65f3a659f13a","migrationVersion":{"dashboard":"7.9.3"},"references":[{"id":"3b49a65d-54d8-483d-a8f0-3d7c855e1ecf","name":"panel_0","type":"visualization"},{"id":"865e577b-634b-4a65-b9d6-7e324c395d18","name":"panel_1","type":"visualization"},{"id":"dc1803f0-b478-11ed-9063-ebe46f9ac203","name":"panel_2","type":"visualization"},{"id":"99acc580-b47a-11ed-9063-ebe46f9ac203","name":"panel_3","type":"visualization"},{"id":"01ea64d0-b62f-11ed-a677-43d7aa86763b","name":"panel_4","type":"visualization"}],"type":"dashboard","updated_at":"2023-05-14T04:42:35.935Z","version":"Wzg4LDFd"}
+    {"exportedCount":9,"missingRefCount":0,"missingReferences":[]}
+  otel-architecture.ndjson: |-
+    {"attributes":{"description":"OTEL Astronomy Demo Application architecture","kibanaSavedObjectMeta":{"searchSourceJSON":"{\"query\":{\"query\":\"\",\"language\":\"kuery\"},\"filter\":[]}"},"title":"otel-architecture","uiStateJSON":"{}","version":1,"visState":"{\"title\":\"otel-architecture\",\"type\":\"markdown\",\"aggs\":[],\"params\":{\"fontSize\":12,\"openLinksInNewTab\":false,\"markdown\":\"# OTEL Astronomy Demo Application\\n\\nThe following diagram presents the OTEL Astronomy shop services architecture:\\n\\n![](img/DemoServices.png)\\n\\n\\n### Trace Collectors\\nGaining a macro-level perspective on incoming data, such as sample counts and cardinality, is essential for comprehending the collector’s internal dynamics. However, when delving into the details, the interconnections can become complex. The Collector Data Flow Dashboard aims to demonstrate the capabilities of the OpenTelemetry demo application, offering a solid foundation for users to build upon.\\n\\nMonitoring data flow through the OpenTelemetry Collector is crucial for several reasons.\\n - All services are traces in all the development languages\\n - Auto instrumented\\n - Manual spans and attributes\\n - Span events\\n - Span links\\n\\nTrace Headers are propagated across all services (**Context propagation**)\\n\\n\\n### Metric Collectors\\nCollecting all the KPI information into Prometheus time series storage including:\\n - runtime metrics\\n - HTTP / gRPC latency distribution\\n\\n### Data Flow Overview\\nCollector Data Flow Dashboard provides valuable guidance on which metrics to monitor. Users can tailor their own dashboard variations by adding necessary metrics specific to their use cases, such as memory_delimiter processor or other data flow indicators. This demo dashboard serves as a starting point, enabling users to explore diverse usage scenarios and adapt the tool to their unique monitoring needs.\\n\\nThe diagram below provides an overview of the system components, showcasing the configuration derived from the OpenTelemetry Collector (otelcol) configuration file utilized by the OpenTelemetry demo application. Additionally, it highlights the observability data (traces and metrics) flow within the system.\\n\\n#### Simple purchase use case\\nThis flow diagram shows the trace evolution from the user selecting a purchased item going through different backend services until reaching the storage database.\\n![](img/DemoFlow.png)\\n\\n## Reference\\n**_OTEL Demo info_**\\n- [architecture](https://opentelemetry.io/docs/demo/architecture/)\\n- [collector-data-flow-dashboard](https://opentelemetry.io/docs/demo/collector-data-flow-dashboard/)\\n- [services](https://opentelemetry.io/docs/demo/services/)\\n\\n**_OTEL Demo youtubes_**\\n - [Cloud Native Live: OpenTelemetry community demo](https://www.youtube.com/watch?v=kD0EAjly9jc)\\n\"}}"},"id":"5c297aa0-f750-11ed-b6d0-850581e4a72d","migrationVersion":{"visualization":"7.10.0"},"references":[],"type":"visualization","updated_at":"2023-05-20T20:53:23.402Z","version":"WzQ3LDVd"}
+    {"attributes":{"description":"OTEL Astronomy Demo Application architecture","hits":0,"kibanaSavedObjectMeta":{"searchSourceJSON":"{\"query\":{\"language\":\"kuery\",\"query\":\"\"},\"filter\":[]}"},"optionsJSON":"{\"hidePanelTitles\":false,\"useMargins\":true}","panelsJSON":"[{\"version\":\"2.7.0\",\"gridData\":{\"x\":0,\"y\":0,\"w\":24,\"h\":15,\"i\":\"cc8d389f-6ab0-4590-bd7d-140ed04a28b1\"},\"panelIndex\":\"cc8d389f-6ab0-4590-bd7d-140ed04a28b1\",\"embeddableConfig\":{},\"panelRefName\":\"panel_0\"}]","timeRestore":false,"title":"otel-demo-architecture","version":1},"id":"67e37e40-f750-11ed-b6d0-850581e4a72d","migrationVersion":{"dashboard":"7.9.3"},"references":[{"id":"5c297aa0-f750-11ed-b6d0-850581e4a72d","name":"panel_0","type":"visualization"}],"type":"dashboard","updated_at":"2023-05-20T20:53:43.076Z","version":"WzQ4LDVd"}
+    {"exportedCount":2,"missingRefCount":0,"missingReferences":[]}
+  tutorial-main-page.ndjson: |-
+    {"attributes":{"description":"Observability OTEL demo tutorial main page","kibanaSavedObjectMeta":{"searchSourceJSON":"{\"query\":{\"query\":\"\",\"language\":\"kuery\"},\"filter\":[]}"},"title":"tutorial-main","uiStateJSON":"{}","version":1,"visState":"{\"title\":\"tutorial-main\",\"type\":\"markdown\",\"aggs\":[],\"params\":{\"fontSize\":12,\"openLinksInNewTab\":false,\"markdown\":\"# OpenSearch Observability Tutorial\\n\\nWelcome to the OpenSearch Observability tutorials! \\n\\nThis tutorial is designed to guide users in the Observability domain through the process of using the OpenSearch Observability plugin. By the end of this tutorial, you will be familiar with building dashboards, creating Pipe Processing Language (PPL) queries, federating metrics from Prometheus data sources, and conducting root cause analysis investigations on your data.\\n\\n## Overview\\n\\nThis tutorial uses the OpenTelemetry demo application, an e-commerce application for an astronomy shop. The application includes multiple microservices, each providing different functionalities. These services are monitored and traced using the OpenTelemetry trace collector and additional agents.\\n\\nThe resulting traces and logs are stored in structured indices in OpenSearch indices, following the OpenTelemetry format. \\n\\nThis provides a realistic environment for learning and applying Observability concepts, investigation and diagnostic patterns.\\n\\n## Content\\n\\nThis tutorial is structured as follows:\\n\\n1. **Introduction to the OTEL demo infrastructure & Architecture**: An introduction to OTEL demo architecture and services, how they are monitored, traces and collected.\\n\\n2. **Introduction to OpenSearch Observability**: A brief introduction to the plugin, its features, and its advantages.\\n\\n3. **Building Dashboards**: Step-by-step guide on how to create effective and informative dashboards in OpenSearch Observability.\\n\\n4. **Creating PPL Queries**: Learn how to create PPL queries to extract valuable insights from your data.\\n\\n5. **Federating Metrics from Prometheus**: Detailed guide on how to federate metrics from a Prometheus data source into OpenSearch Observability.\\n\\n6. **Conducting Root Cause Analysis**: Learn how to use the built-in features of OpenSearch Observability to conduct a root cause analysis investigation on your data.\\n\\n7. **OpenTelemetry Integration**: Learn how the OpenTelemetry demo application sends data to OpenSearch and how to navigate and understand this data in OpenSearch Observability.\\n\\nThis tutorial would enhance your understanding of Observability and your ability to use OpenSearch Observability to its fullest.\\n\\n**_Enjoy the learning journey!_**\\n\\n## Prerequisites\\n\\nTo get the most out of this tutorial, you should have a basic understanding of Observability, microservice architectures, and the OpenTelemetry ecosystem.\\n\\n## Getting Started\\n\\nTo start the tutorial, navigate to the `Introduction to OpenSearch Observability` section.\\n\\nHappy Learning!\\n\\n---\\n\\n#### 1. [OTEL Demo Architecture](OTEL Demo Architecture.md) \\n\\n#### 2. [Observability Introduction](Observability Introduction.md) \\n\\n#### 3. [Memory Leak Investigation Tutorial](Memory Leak Tutorial.md) \\n\\n\\n---\\n## References\\n\\n[Cloud Native OpenTelemetry community you-tube lecture](https://www.youtube.com/watch?v=kD0EAjly9jc)\"}}"},"id":"e8b42d80-f750-11ed-b6d0-850581e4a72d","migrationVersion":{"visualization":"7.10.0"},"references":[],"type":"visualization","updated_at":"2023-05-20T20:57:19.192Z","version":"WzQ5LDVd"}
+    {"attributes":{"description":"Observability OTEL demo tutorial main page","hits":0,"kibanaSavedObjectMeta":{"searchSourceJSON":"{\"query\":{\"language\":\"kuery\",\"query\":\"\"},\"filter\":[]}"},"optionsJSON":"{\"hidePanelTitles\":false,\"useMargins\":true}","panelsJSON":"[{\"version\":\"2.7.0\",\"gridData\":{\"x\":0,\"y\":0,\"w\":24,\"h\":15,\"i\":\"0477cef5-8f99-4c83-afae-8e5bbf4dc89e\"},\"panelIndex\":\"0477cef5-8f99-4c83-afae-8e5bbf4dc89e\",\"embeddableConfig\":{},\"panelRefName\":\"panel_0\"}]","timeRestore":false,"title":"tutorial-main","version":1},"id":"f0805520-f750-11ed-b6d0-850581e4a72d","migrationVersion":{"dashboard":"7.9.3"},"references":[{"id":"e8b42d80-f750-11ed-b6d0-850581e4a72d","name":"panel_0","type":"visualization"}],"type":"dashboard","updated_at":"2023-05-20T20:57:32.274Z","version":"WzUwLDVd"}
+    {"exportedCount":2,"missingRefCount":0,"missingReferences":[]}
+
+  data-stream.json: |-
+    {
+      "data-stream" : ["sso_logs-nginx-prod","opensearch-prod"]
+    }
+  cloud.mapping: |-
+    {
+      "template": {
+        "mappings": {
+          "properties": {
+            "cloud": {
+              "properties": {
+                "provider": {
+                  "type": "keyword"
+                },
+                "availability_zone": {
+                  "type": "keyword"
+                },
+                "region": {
+                  "type": "keyword"
+                },
+                "machine": {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "keyword"
+                    }
+                  }
+                },
+                "account": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "keyword"
+                    },
+                    "name": {
+                      "type": "keyword"
+                    }
+                  }
+                },
+                "service": {
+                  "type": "object",
+                  "properties": {
+                    "name": {
+                      "type": "keyword"
+                    }
+                  }
+                },
+                "project": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "keyword"
+                    },
+                    "name": {
+                      "type": "keyword"
+                    }
+                  }
+                },
+                "instance": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "keyword"
+                    },
+                    "name": {
+                      "type": "keyword"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  communication.mapping: |
+    {
+      "template": {
+        "mappings": {
+          "properties": {
+            "communication": {
+              "properties": {
+                "sock.family": {
+                  "type": "keyword",
+                  "ignore_above": 256
+                },
+                "source": {
+                  "type": "object",
+                  "properties": {
+                    "address": {
+                      "type": "text",
+                      "fields": {
+                        "keyword": {
+                          "type": "keyword",
+                          "ignore_above": 1024
+                        }
+                      }
+                    },
+                    "domain": {
+                      "type": "text",
+                      "fields": {
+                        "keyword": {
+                          "type": "keyword",
+                          "ignore_above": 1024
+                        }
+                      }
+                    },
+                    "bytes": {
+                      "type": "keyword",
+                      "ignore_above": 256
+                    },
+                    "ip": {
+                      "type": "ip"
+                    },
+                    "port": {
+                      "type": "long"
+                    },
+                    "mac": {
+                      "type": "keyword",
+                      "ignore_above": 1024
+                    },
+                    "packets": {
+                      "type": "long"
+                    }
+                  }
+                },
+                "destination": {
+                  "type": "object",
+                  "properties": {
+                    "address": {
+                      "type": "text",
+                      "fields": {
+                        "keyword": {
+                          "type": "keyword",
+                          "ignore_above": 1024
+                        }
+                      }
+                    },
+                    "domain": {
+                      "type": "text",
+                      "fields": {
+                        "keyword": {
+                          "type": "keyword",
+                          "ignore_above": 1024
+                        }
+                      }
+                    },
+                    "bytes": {
+                      "type": "keyword",
+                      "ignore_above": 256
+                    },
+                    "ip": {
+                      "type": "ip"
+                    },
+                    "port": {
+                      "type": "long"
+                    },
+                    "mac": {
+                      "type": "keyword",
+                      "ignore_above": 1024
+                    },
+                    "packets": {
+                      "type": "long"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  http.mapping: |-
+    {
+      "template": {
+        "mappings": {
+          "dynamic_templates": [
+            {
+              "request_header_map": {
+                "mapping": {
+                  "type": "keyword"
+                },
+                "path_match": "request.header.*"
+              }
+            },
+            {
+              "response_header_map": {
+                "mapping": {
+                  "type": "keyword"
+                },
+                "path_match": "response.header.*"
+              }
+            }
+          ],
+          "properties": {
+            "http": {
+              "properties": {
+                "flavor": {
+                  "type": "keyword",
+                  "ignore_above": 256
+                },
+                "user_agent": {
+                  "type": "keyword",
+                  "ignore_above": 2048
+                },
+                "url": {
+                  "type": "keyword",
+                  "ignore_above": 2048
+                },
+                "schema": {
+                  "type": "keyword",
+                  "ignore_above": 1024
+                },
+                "target": {
+                  "type": "keyword",
+                  "ignore_above": 1024
+                },
+                "route": {
+                  "type": "keyword",
+                  "ignore_above": 1024
+                },
+                "client.ip": {
+                  "type": "ip"
+                },
+                "resent_count": {
+                  "type": "integer"
+                },
+                "request": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "text",
+                      "fields": {
+                        "keyword": {
+                          "type": "keyword",
+                          "ignore_above": 256
+                        }
+                      }
+                    },
+                    "body.content": {
+                      "type": "text"
+                    },
+                    "bytes": {
+                      "type": "keyword",
+                      "ignore_above": 256
+                    },
+                    "method": {
+                      "type": "keyword",
+                      "ignore_above": 256
+                    },
+                    "referrer": {
+                      "type": "keyword",
+                      "ignore_above": 1024
+                    },
+                    "mime_type": {
+                      "type": "keyword",
+                      "ignore_above": 1024
+                    }
+                  }
+                },
+                "response": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "text",
+                      "fields": {
+                        "keyword": {
+                          "type": "keyword",
+                          "ignore_above": 256
+                        }
+                      }
+                    },
+                    "body.content": {
+                      "type": "text"
+                    },
+                    "bytes": {
+                      "type": "keyword",
+                      "ignore_above": 256
+                    },
+                    "status_code": {
+                      "type": "keyword",
+                      "ignore_above": 256
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  tracegroup.mapping: |-
+    {
+      "template": {
+        "mappings": {
+          "properties": {
+            "traceGroup": {
+              "ignore_above": 1024,
+              "type": "keyword"
+            },
+            "traceGroupFields": {
+              "properties": {
+                "endTime": {
+                  "type": "date_nanos"
+                },
+                "durationInNanos": {
+                  "type": "long"
+                },
+                "statusCode": {
+                  "type": "integer"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  logs.mapping: |-
+    {
+      "index_patterns": [
+        "sso_logs-*-*"
+      ],
+      "data_stream": {},
+      "template": {
+        "mappings": {
+          "_meta": {
+            "version": "1.0.0",
+            "catalog": "observability",
+            "type": "logs",
+            "component" : "log"
+          },
+          "_source": {
+            "enabled": true
+          },
+          "dynamic_templates": [
+            {
+              "resources_map": {
+                "mapping": {
+                  "type": "keyword"
+                },
+                "path_match": "resource.*"
+              }
+            },
+            {
+              "attributes_map": {
+                "mapping": {
+                  "type": "keyword"
+                },
+                "path_match": "attributes.*"
+              }
+            },
+            {
+              "instrumentation_scope_attributes_map": {
+                "mapping": {
+                  "type": "keyword"
+                },
+                "path_match": "instrumentationScope.attributes.*"
+              }
+            }
+          ],
+          "properties": {
+            "severity": {
+              "properties": {
+                "number": {
+                  "type": "long"
+                },
+                "text": {
+                  "type": "text",
+                  "fields": {
+                    "keyword": {
+                      "type": "keyword",
+                      "ignore_above": 256
+                    }
+                  }
+                }
+              }
+            },
+            "attributes": {
+              "type": "object",
+              "properties": {
+                "data_stream": {
+                  "properties": {
+                    "dataset": {
+                      "ignore_above": 128,
+                      "type": "keyword"
+                    },
+                    "namespace": {
+                      "ignore_above": 128,
+                      "type": "keyword"
+                    },
+                    "type": {
+                      "ignore_above": 56,
+                      "type": "keyword"
+                    }
+                  }
+                }
+              }
+            },
+            "body": {
+              "type": "text"
+            },
+            "@timestamp": {
+              "type": "date"
+            },
+            "observedTimestamp": {
+              "type": "date"
+            },
+            "traceId": {
+              "ignore_above": 256,
+              "type": "keyword"
+            },
+            "spanId": {
+              "ignore_above": 256,
+              "type": "keyword"
+            },
+            "schemaUrl": {
+              "type": "text",
+              "fields": {
+                "keyword": {
+                  "type": "keyword",
+                  "ignore_above": 256
+                }
+              }
+            },
+            "instrumentationScope": {
+              "properties": {
+                "name": {
+                  "type": "text",
+                  "fields": {
+                    "keyword": {
+                      "type": "keyword",
+                      "ignore_above": 128
+                    }
+                  }
+                },
+                "version": {
+                  "type": "text",
+                  "fields": {
+                    "keyword": {
+                      "type": "keyword",
+                      "ignore_above": 256
+                    }
+                  }
+                },
+                "dropped_attributes_count": {
+                  "type": "integer"
+                },
+                "schemaUrl": {
+                  "type": "text",
+                  "fields": {
+                    "keyword": {
+                      "type": "keyword",
+                      "ignore_above": 256
+                    }
+                  }
+                }
+              }
+            },
+            "event": {
+              "properties": {
+                "domain": {
+                  "ignore_above": 256,
+                  "type": "keyword"
+                },
+                "name": {
+                  "ignore_above": 256,
+                  "type": "keyword"
+                },
+                "category": {
+                  "ignore_above": 256,
+                  "type": "keyword"
+                },
+                "type": {
+                  "ignore_above": 256,
+                  "type": "keyword"
+                },
+                "kind": {
+                  "ignore_above": 256,
+                  "type": "keyword"
+                },
+                "result": {
+                  "ignore_above": 256,
+                  "type": "keyword"
+                },
+                "exception": {
+                  "properties": {
+                    "message": {
+                      "ignore_above": 1024,
+                      "type": "keyword"
+                    },
+                    "type": {
+                      "ignore_above": 256,
+                      "type": "keyword"
+                    },
+                    "stacktrace": {
+                      "type": "text"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "settings": {
+          "index": {
+            "mapping": {
+              "total_fields": {
+                "limit": 10000
+              }
+            },
+            "refresh_interval": "5s"
+          }
+        }
+      },
+      "composed_of": [
+        "http_template",
+        "communication_template",
+        "cloud_template"
+      ],
+      "version": 1,
+      "_meta": {
+        "description": "Simple Schema For Observability",
+        "catalog": "observability",
+        "type": "logs"
+      }
+    }
+  metrics.mapping: |-
+    {
+      "index_patterns": [
+        "sso_metrics-*-*"
+      ],
+      "data_stream": {},
+      "template": {
+        "mappings": {
+          "_meta": {
+            "version": "1.0.0",
+            "catalog": "observability",
+            "type": "metrics",
+            "component": "metrics",
+            "correlations" : [
+              {
+                "field": "spanId",
+                "foreign-schema" : "traces",
+                "foreign-field" : "spanId"
+              },
+              {
+                "field": "traceId",
+                "foreign-schema" : "traces",
+                "foreign-field" : "traceId"
+              }
+            ]
+          },
+          "_source": {
+            "enabled": true
+          },
+          "dynamic_templates": [
+            {
+              "attributes_map": {
+                "mapping": {
+                  "type": "keyword"
+                },
+                "path_match": "attributes.*"
+              }
+            },
+            {
+              "resources_map": {
+                "mapping": {
+                  "type": "keyword"
+                },
+                "path_match": "resource.*"
+              }
+            },
+            {
+              "exemplar_attributes_map": {
+                "mapping": {
+                  "type": "keyword"
+                },
+                "path_match": "exemplar.attributes.*"
+              }
+            },
+            {
+              "instrumentation_scope_attributes_map": {
+                "mapping": {
+                  "type": "keyword"
+                },
+                "path_match": "instrumentationScope.attributes.*"
+              }
+            }
+          ],
+          "properties": {
+            "name": {
+              "type": "text",
+              "fields": {
+                "keyword": {
+                  "type": "keyword",
+                  "ignore_above": 256
+                }
+              }
+            },
+            "attributes": {
+              "type": "object",
+              "properties": {
+                "data_stream": {
+                  "properties": {
+                    "dataset": {
+                      "ignore_above": 128,
+                      "type": "keyword"
+                    },
+                    "namespace": {
+                      "ignore_above": 128,
+                      "type": "keyword"
+                    },
+                    "type": {
+                      "ignore_above": 56,
+                      "type": "keyword"
+                    }
+                  }
+                }
+              }
+            },
+            "description": {
+              "type": "text",
+              "fields": {
+                "keyword": {
+                  "type": "keyword",
+                  "ignore_above": 256
+                }
+              }
+            },
+            "unit": {
+              "type": "keyword",
+              "ignore_above": 128
+            },
+            "kind": {
+              "type": "keyword",
+              "ignore_above": 128
+            },
+            "aggregationTemporality": {
+              "type": "keyword",
+              "ignore_above": 128
+            },
+            "monotonic": {
+              "type": "boolean"
+            },
+            "startTime": {
+              "type": "date"
+            },
+            "@timestamp": {
+              "type": "date"
+            },
+            "observedTimestamp": {
+              "type": "date_nanos"
+            },
+            "value": {
+              "properties": {
+                "int": {
+                  "type": "integer"
+                },
+                "double": {
+                  "type": "double"
+                }
+              }
+            },
+            "buckets": {
+              "properties": {
+                "count": {
+                  "type": "long"
+                },
+                "sum": {
+                  "type": "double"
+                },
+                "max": {
+                  "type": "float"
+                },
+                "min": {
+                  "type": "float"
+                }
+              }
+            },
+            "bucketCount": {
+              "type": "long"
+            },
+            "bucketCountsList": {
+              "type": "long"
+            },
+            "explicitBoundsList": {
+              "type": "float"
+            },
+            "explicitBoundsCount": {
+              "type": "float"
+            },
+            "quantiles": {
+              "properties": {
+                "quantile": {
+                  "type": "double"
+                },
+                "value": {
+                  "type": "double"
+                }
+              }
+            },
+            "quantileValuesCount": {
+              "type": "long"
+            },
+            "positiveBuckets": {
+              "properties": {
+                "count": {
+                  "type": "long"
+                },
+                "max": {
+                  "type": "float"
+                },
+                "min": {
+                  "type": "float"
+                }
+              }
+            },
+            "negativeBuckets": {
+              "properties": {
+                "count": {
+                  "type": "long"
+                },
+                "max": {
+                  "type": "float"
+                },
+                "min": {
+                  "type": "float"
+                }
+              }
+            },
+            "negativeOffset": {
+              "type": "integer"
+            },
+            "positiveOffset": {
+              "type": "integer"
+            },
+            "zeroCount": {
+              "type": "long"
+            },
+            "scale": {
+              "type": "long"
+            },
+            "max": {
+              "type": "float"
+            },
+            "min": {
+              "type": "float"
+            },
+            "sum": {
+              "type": "float"
+            },
+            "count": {
+              "type": "long"
+            },
+            "exemplar": {
+              "properties": {
+                "time": {
+                  "type": "date"
+                },
+                "traceId": {
+                  "ignore_above": 256,
+                  "type": "keyword"
+                },
+                "spanId": {
+                  "ignore_above": 256,
+                  "type": "keyword"
+                }
+              }
+            },
+            "instrumentationScope": {
+              "properties": {
+                "name": {
+                  "type": "text",
+                  "fields": {
+                    "keyword": {
+                      "type": "keyword",
+                      "ignore_above": 128
+                    }
+                  }
+                },
+                "version": {
+                  "type": "text",
+                  "fields": {
+                    "keyword": {
+                      "type": "keyword",
+                      "ignore_above": 256
+                    }
+                  }
+                },
+                "droppedAttributesCount": {
+                  "type": "integer"
+                },
+                "schemaUrl": {
+                  "type": "text",
+                  "fields": {
+                    "keyword": {
+                      "type": "keyword",
+                      "ignore_above": 256
+                    }
+                  }
+                }
+              }
+            },
+            "schemaUrl": {
+              "type": "text",
+              "fields": {
+                "keyword": {
+                  "type": "keyword",
+                  "ignore_above": 256
+                }
+              }
+            }
+          }
+        },
+        "settings": {
+          "index": {
+            "mapping": {
+              "total_fields": {
+                "limit": 10000
+              }
+            },
+            "refresh_interval": "5s"
+          }
+        }
+      },
+      "version": 1,
+      "_meta": {
+        "description": "Observability Metrics Mapping Template",
+        "catalog": "observability",
+        "type": "metrics",
+        "correlations" : [
+          {
+            "field": "spanId",
+            "foreign-schema" : "traces",
+            "foreign-field" : "spanId"
+          },
+          {
+            "field": "traceId",
+            "foreign-schema" : "traces",
+            "foreign-field" : "traceId"
+          }
+        ]
+      }
+    }
+  opensearch.mapping: |-
+    {
+      "index_patterns": [
+        "opensearch-*"
+      ],
+      "data_stream": {},
+      "template": {
+        "settings": {
+          "number_of_shards": 1,
+          "number_of_replicas": 1
+        },
+        "mappings": {
+          "properties": {
+            "opensearch.cluster.id": {"type": "keyword"},
+            "opensearch.cluster.name": {"type": "keyword"},
+            "opensearch.index.creation.date": {"type": "date"},
+            "opensearch.index.end_time": {"type": "date"},
+            "opensearch.index.hidden": {"type": "boolean"},
+            "opensearch.index.index_status": {"type": "keyword"},
+            "opensearch.index.name": {"type": "keyword"},
+            "opensearch.index.storage_tier": {"type": "keyword"},
+            "opensearch.index.primaries.docs.count": {"type": "long"},
+            "opensearch.index.primaries.docs.deleted": {"type": "long"},
+            "opensearch.index.primaries.indexing.index_time_in_millis": {"type": "long"},
+            "opensearch.index.primaries.indexing.index_total": {"type": "long"},
+            "opensearch.index.primaries.indexing.throttle_time_in_millis": {"type": "long"},
+            "opensearch.index.primaries.merges.total_size_in_bytes": {"type": "long"},
+            "opensearch.index.primaries.refresh.total_time_in_millis": {"type": "long"},
+            "opensearch.index.primaries.segments.count": {"type": "long"},
+            "opensearch.index.primaries.store.size_in_bytes": {"type": "long"},
+            "opensearch.index.shards.total": {"type": "long"},
+            "opensearch.index.shards.primaries": {"type": "long"},
+            "opensearch.index.start_time": {"type": "date"},
+            "opensearch.index.status": {"type": "keyword"},
+            "opensearch.index.total.docs.count": {"type": "long"},
+            "opensearch.index.total.docs.deleted": {"type": "long"},
+            "opensearch.index.total.fielddata.memory_size_in_bytes": {"type": "long"},
+            "opensearch.index.total.indexing.index_time_in_millis": {"type": "long"},
+            "opensearch.index.total.indexing.index_total": {"type": "long"},
+            "opensearch.index.total.indexing.throttle_time_in_millis": {"type": "long"},
+            "opensearch.index.total.merges.total_size_in_bytes": {"type": "long"},
+            "opensearch.index.total.refresh.total_time_in_millis": {"type": "long"},
+            "opensearch.index.total.search.query_time_in_millis": {"type": "long"},
+            "opensearch.index.total.search.query_total": {"type": "long"},
+            "opensearch.index.total.segments.count": {"type": "long"},
+            "opensearch.index.total.segments.doc_values_memory_in_bytes": {"type": "long"},
+            "opensearch.index.total.segments.fixed_bit_set_memory_in_bytes": {"type": "long"},
+            "opensearch.index.total.segments.index_writer_memory_in_bytes": {"type": "long"},
+            "opensearch.index.total.segments.memory_in_bytes": {"type": "long"},
+            "opensearch.index.total.segments.norms_memory_in_bytes": {"type": "long"},
+            "opensearch.index.total.segments.points_memory_in_bytes": {"type": "long"},
+            "opensearch.index.total.segments.stored_fields_memory_in_bytes": {"type": "long"},
+            "opensearch.index.total.segments.term_vectors_memory_in_bytes": {"type": "long"},
+            "opensearch.index.total.segments.terms_memory_in_bytes": {"type": "long"},
+            "opensearch.index.total.segments.version_map_memory_in_bytes": {"type": "long"},
+            "opensearch.index.total.store.size_in_bytes": {"type": "long"},
+            "opensearch.index.uuid": {"type": "keyword"},
+            "opensearch.node.id": {"type": "keyword"},
+            "opensearch.shard.docs.count": {"type": "long"},
+            "opensearch.shard.number": {"type": "long"},
+            "opensearch.shard.primary": {"type": "boolean"},
+            "opensearch.shard.source_node.name": {"type": "keyword"},
+            "opensearch.shard.source_node.uuid": {"type": "keyword"},
+            "opensearch.shard.state": {"type": "keyword"},
+            "opensearch.shard.store.size_in_bytes": {"type": "long"}
+          }
+        }
+      },
+      "version": 2
+    }
+  services.mapping: |-
+    {
+      "index_patterns": [
+        "sso_services-*-*"
+      ],
+      "template": {
+        "mappings": {
+          "_meta": {
+            "version": "1.0.0",
+            "catalog": "observability",
+            "type": "traces",
+            "component": "services",
+            "correlations": [
+              {
+                "field": "traceGroupName",
+                "foreign-schema": "traceGroups",
+                "foreign-field": "traceGroup"
+              }
+            ]
+          },
+          "_source": {
+            "enabled": true
+          },
+          "dynamic_templates": [
+            {
+              "attributes_map": {
+                "mapping": {
+                  "type": "keyword"
+                },
+                "path_match": "attributes.*"
+              }
+            }
+          ],
+          "properties": {
+            "destination": {
+              "properties": {
+                "domain": {
+                  "type": "keyword",
+                  "ignore_above": 1024
+                },
+                "resource": {
+                  "type": "keyword",
+                  "ignore_above": 1024
+                }
+              }
+            },
+            "hashId": {
+              "type": "keyword",
+              "ignore_above": 1024
+            },
+            "serviceName": {
+              "type": "keyword",
+              "ignore_above": 1024
+            },
+            "kind": {
+              "type": "keyword",
+              "ignore_above": 1024
+            },
+            "target": {
+              "properties": {
+                "domain": {
+                  "type": "keyword",
+                  "ignore_above": 1024
+                },
+                "resource": {
+                  "type": "keyword",
+                  "ignore_above": 1024
+                }
+              }
+            },
+            "traceGroupName": {
+              "type": "keyword",
+              "ignore_above": 1024
+            }
+          }
+        },
+        "settings": {
+          "index": {
+            "mapping": {
+              "total_fields": {
+                "limit": 10000
+              }
+            },
+            "refresh_interval": "5s"
+          }
+        }
+      },
+      "composed_of": [
+      ],
+      "version": 1,
+      "_meta": {
+        "description": "Simple Schema For Observability Service",
+        "catalog": "observability",
+        "type": "services",
+        "correlations": [
+          {
+            "field": "traceGroupName",
+            "foreign-schema": "traceGroups",
+            "foreign-field": "traceGroup"
+          }
+        ]
+      }
+    }
+  traces.mapping: |-
+    {
+      "index_patterns": [
+        "sso_traces-*-*"
+      ],
+      "data_stream": {},
+      "template": {
+        "mappings": {
+          "_meta": {
+            "version": "1.0.0",
+            "catalog": "observability",
+            "type": "traces",
+            "component": "trace",
+            "correlations": [
+              {
+                "field": "serviceName",
+                "foreign-schema": "services",
+                "foreign-field": "spanId"
+              }
+            ]
+          },
+          "dynamic_templates": [
+            {
+              "attributes_map": {
+                "mapping": {
+                  "type": "keyword"
+                },
+                "path_match": "attributes.*"
+              }
+            },
+            {
+              "events_attributes_map": {
+                "mapping": {
+                  "type": "keyword"
+                },
+                "path_match": "events.attributes.*"
+              }
+            },
+            {
+              "links_attributes_map": {
+                "mapping": {
+                  "type": "keyword"
+                },
+                "path_match": "links.attributes.*"
+              }
+            },
+            {
+              "instrumentation_scope_attributes_map": {
+                "mapping": {
+                  "type": "keyword"
+                },
+                "path_match": "instrumentationScope.attributes.*"
+              }
+            },
+            {
+              "resources_map": {
+                "mapping": {
+                  "type": "keyword"
+                },
+                "path_match": "resource.*"
+              }
+            }
+          ],
+          "_source": {
+            "enabled": true
+          },
+          "properties": {
+            "traceId": {
+              "ignore_above": 256,
+              "type": "keyword"
+            },
+            "spanId": {
+              "ignore_above": 256,
+              "type": "keyword"
+            },
+            "traceState": {
+              "type": "text",
+              "fields": {
+                "keyword": {
+                  "type": "keyword",
+                  "ignore_above": 256
+                }
+              }
+            },
+            "parentSpanId": {
+              "ignore_above": 256,
+              "type": "keyword"
+            },
+            "name": {
+              "ignore_above": 1024,
+              "type": "keyword"
+            },
+            "kind": {
+              "ignore_above": 128,
+              "type": "keyword"
+            },
+            "startTime": {
+              "type": "date_nanos"
+            },
+            "endTime": {
+              "type": "date_nanos"
+            },
+            "droppedAttributesCount": {
+              "type": "long"
+            },
+            "droppedEventsCount": {
+              "type": "long"
+            },
+            "droppedLinksCount": {
+              "type": "long"
+            },
+            "status": {
+              "properties": {
+                "code": {
+                  "type": "long"
+                },
+                "message": {
+                  "ignore_above": 128,
+                  "type": "keyword"
+                }
+              }
+            },
+            "attributes": {
+              "type": "object",
+              "properties": {
+                "serviceName": {
+                  "type": "keyword"
+                },
+                "data_stream": {
+                  "properties": {
+                    "dataset": {
+                      "ignore_above": 128,
+                      "type": "keyword"
+                    },
+                    "namespace": {
+                      "ignore_above": 128,
+                      "type": "keyword"
+                    },
+                    "type": {
+                      "ignore_above": 56,
+                      "type": "keyword"
+                    }
+                  }
+                }
+              }
+            },
+            "events": {
+              "type": "nested",
+              "properties": {
+                "name": {
+                  "ignore_above": 1024,
+                  "type": "keyword"
+                },
+                "@timestamp": {
+                  "type": "date_nanos"
+                },
+                "observedTimestamp": {
+                  "type": "date_nanos"
+                }
+              }
+            },
+            "links": {
+              "type": "nested",
+              "properties": {
+                "traceId": {
+                  "ignore_above": 256,
+                  "type": "keyword"
+                },
+                "spanId": {
+                  "ignore_above": 256,
+                  "type": "keyword"
+                },
+                "traceState": {
+                  "type": "text",
+                  "fields": {
+                    "keyword": {
+                      "type": "keyword",
+                      "ignore_above": 256
+                    }
+                  }
+                }
+              }
+            },
+            "instrumentationScope": {
+              "properties": {
+                "name": {
+                  "type": "keyword"
+                },
+                "version": {
+                  "type": "keyword"
+                },
+                "droppedAttributesCount": {
+                  "type": "integer"
+                },
+                "schemaUrl": {
+                  "type": "keyword"
+                }
+              }
+            },
+            "schemaUrl": {
+              "type": "keyword"
+            }
+          }
+        }
+      },
+      "composed_of": [
+        "tracegroup_template"
+      ],
+      "version": 1,
+      "_meta": {
+        "description": "Observability Traces Mapping Template",
+        "catalog": "observability",
+        "type": "traces",
+        "correlations": [
+          {
+            "field": "serviceName",
+            "foreign-schema": "services",
+            "foreign-field": "spanId"
+          }
+        ]
+      }
+    }
+---

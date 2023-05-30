@@ -37,15 +37,15 @@ Backend supportive services
  - [Frontend Nginx Proxy](http://nginx:90) *(replacement for _Frontend-Proxy_)*
    - See [description](../src/nginx-otel/README.md)
  - [OpenSearch](https://opensearch-node1:9200)
-    - See [description](https://github.com/YANG-DB/opentelemetry-demo/blob/12d52cbb23bbf4226f6de2dfec840482a0a7d054/docker-compose.yml#L697)
+    - See [description](https://github.com/opensearch-project/opentelemetry-demo/blob/12d52cbb23bbf4226f6de2dfec840482a0a7d054/docker-compose.yml#L697)
  - [Dashboards](http://opensearch-dashboards:5601)
-   - See [description](https://github.com/YANG-DB/opentelemetry-demo/blob/12d52cbb23bbf4226f6de2dfec840482a0a7d054/docker-compose.yml#L747) 
+   - See [description](https://github.com/opensearch-project/opentelemetry-demo/blob/12d52cbb23bbf4226f6de2dfec840482a0a7d054/docker-compose.yml#L747) 
  - [Prometheus](http://prometheus:9090)
-   - See [description](https://github.com/YANG-DB/opentelemetry-demo/blob/12d52cbb23bbf4226f6de2dfec840482a0a7d054/docker-compose.yml#L674)
+   - See [description](https://github.com/opensearch-project/opentelemetry-demo/blob/12d52cbb23bbf4226f6de2dfec840482a0a7d054/docker-compose.yml#L674)
  - [Feature-Flag](http://feature-flag-service:8881)
    - See [description](../src/featureflagservice/README.md)
  - [Grafana](http://grafana:3000)
-   - See [description](https://github.com/YANG-DB/opentelemetry-demo/blob/12d52cbb23bbf4226f6de2dfec840482a0a7d054/docker-compose.yml#L637)
+   - See [description](https://github.com/opensearch-project/opentelemetry-demo/blob/12d52cbb23bbf4226f6de2dfec840482a0a7d054/docker-compose.yml#L637)
 
 ### Services Topology
 The next diagram shows the docker compose services dependencies

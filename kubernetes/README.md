@@ -4,6 +4,9 @@ This short tutorial explains how to generate the k8s templates for the kubernete
 ## Using helm charts
 Another option is to use helm to introduce the [specific OpenSearch changes](https://opentelemetry.io/docs/demo/kubernetes-deployment/) to support O/S Observability in the original OTEL demo
 
+[OTEL Demo helm charts repository](https://github.com/open-telemetry/opentelemetry-helm-charts/tree/main/charts/opentelemetry-demo) 
+
+
 #### Install OpenSearch helm:
 ```text
 helm repo add opensearch https://opensearch-project.github.io/helm-charts/
@@ -24,7 +27,6 @@ Next install the opensearch cluster & dashboards under that namespace
 ```text
 helm install opensearch opensearch/opensearch -n otel-demo
 helm install dashboards opensearch/opensearch-dashboards -n otel-demo
-
 ```
 
 #### Install otel demo helm:
@@ -39,6 +41,9 @@ You can then run `helm search repo open-telemetry` to see the charts.
 To install the chart with the release name my-otel-demo, run the following command:
 
 `helm install otel-demo open-telemetry/opentelemetry-demo`
+
+
+
 
 ---
 

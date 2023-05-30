@@ -1,0 +1,97 @@
+# Copyright The OpenTelemetry Authors
+# SPDX-License-Identifier: Apache-2.0
+---
+# Data Prepper Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: data-prepper
+  namespace: otel-demo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: data-prepper
+  template:
+    metadata:
+      labels:
+        app: data-prepper
+    spec:
+      containers:
+        - name: data-prepper
+          image: opensearchproject/data-prepper:latest
+          ports:
+            - containerPort: 21890
+          volumeMounts:
+            - name: config-volume
+              mountPath: /usr/share/data-prepper/pipelines/
+              subPath: pipelines.yaml
+            - name: config-volume
+              mountPath: /usr/share/data-prepper/config/
+              subPath: data-prepper-config.yaml
+      volumes:
+        - name: config-volume
+          configMap:
+            name: data-prepper-config
+---
+# Data Prepper config-map
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: data-prepper-config
+  namespace: otel-demo
+data:
+  trace_analytics_no_ssl_2x.yml: |
+    entry-pipeline:
+      delay: "100"
+      source:
+        otel_trace_source:
+          ssl: false
+      sink:
+        - pipeline:
+            name: "raw-pipeline"
+        - pipeline:
+            name: "service-map-pipeline"
+    raw-pipeline:
+      source:
+        pipeline:
+          name: "entry-pipeline"
+      processor:
+        - otel_trace_raw:
+      sink:
+        - opensearch:
+            hosts: [ "https://opensearch-cluster-leader:9200" ]
+            insecure: true
+            username: "{USR}"
+            password: "{PSWD}"
+            index_type: trace-analytics-raw
+    service-map-pipeline:
+      delay: "100"
+      source:
+        pipeline:
+          name: "entry-pipeline"
+      processor:
+        - service_map_stateful:
+      sink:
+        - opensearch:
+            hosts: ["https://opensearch-cluster-leader:9200"]
+            insecure: true
+            username: "{USR}"
+            password: "{PSWD}"
+            index_type: trace-analytics-service-map
+  data-prepper-config.yaml: |
+    ssl: false
+---
+# Data Prepper Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: data-prepper-service
+  namespace: otel-demo
+spec:
+  selector:
+    app: data-prepper
+  ports:
+    - protocol: TCP
+      port: 21890
+      targetPort: 21890
