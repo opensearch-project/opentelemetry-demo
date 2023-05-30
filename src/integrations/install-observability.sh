@@ -14,3 +14,8 @@ done
 echo "Service is up and ready! Executing command:"
 echo "importing assets into opensearch"
 exec $cmd
+
+echo "completed loading assets into OpenSearch"
+
+exit 0
+

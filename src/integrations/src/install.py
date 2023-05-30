@@ -13,8 +13,13 @@ opensearch_dashboard = os.environ.get('OPENSEARCH_DASHBOARD_HOST', 'opensearch-d
 # For testing only. Don't store credentials in code.
 auth = ('admin', 'admin')
 
-# Configure logging
-logging.basicConfig(format='%(asctime)s [%(levelname)s] %(message)s', level=logging.INFO)
+# Configure logging to file
+logging.basicConfig(
+    filename='application.log',  # The file where the logs should be written to
+    filemode='a',  # Append mode, use 'w' for overwriting each time the script is run
+    format='%(asctime)s [%(levelname)s] %(message)s',
+    level=logging.INFO
+)
 logger = logging.getLogger(__name__)
 
 # Create the client with SSL/TLS enabled, but hostname verification disabled.
@@ -27,7 +32,6 @@ client = OpenSearch(
     ssl_assert_hostname = False,
     ssl_show_warn = False
 )
-# verify connection to opensearch
 # verify connection to opensearch
 def test_connection():
     max_retries = 30  # Maximum number of retries
@@ -42,15 +46,15 @@ def test_connection():
                 verify=False  # Disable SSL verification
             )
             response.raise_for_status()  # Raise an exception if the request failed
-            print('Successfully connected to OpenSearch')
+            logger.info('Successfully connected to OpenSearch')
             return  # Exit the function if connection is successful
         except requests.HTTPError as e:
             logging.error(f'Failed to connect to OpenSearch, error: {str(e)}')
 
-        print(f'Attempt {i + 1} failed, waiting for {retry_interval} seconds before retrying...')
+        logger.info(f'Attempt {i + 1} failed, waiting for {retry_interval} seconds before retrying...')
         time.sleep(retry_interval)
 
-    print(f'Failed to connect to OpenSearch after {max_retries} attempts')
+    logger.error(f'Failed to connect to OpenSearch after {max_retries} attempts')
     exit(1)  # Exit the program with an error code
 
 # create mapping components to compose the different observability categories
@@ -62,7 +66,7 @@ def create_mapping_components(client):
                 mapping = json.load(f)
 
                 template_name = os.path.splitext(filename)[0]  # Remove the .mapping extension
-                print(f'About to load  template: {template_name}')
+                logger.info(f'About to load  template: {template_name}')
                 # Create the component template
                 try:
                     response = requests.put(
@@ -74,7 +78,6 @@ def create_mapping_components(client):
                     )
                     response.raise_for_status()  # Raise an exception if the request failed
                     logger.info(f'Successfully created component template: {template_name}')
-                    print(f'Successfully created component template: {template_name}')
                 except requests.HTTPError as e:
                     logger.error(f'Failed to create component template: {template_name}, error: {str(e)}')
 
@@ -87,12 +90,12 @@ def create_mapping_templates(client):
                 mapping = json.load(f)
 
                 template_name = os.path.splitext(filename)[0]  # Remove the .mapping extension
-                print(f'About to created index template: {template_name}')
+                logger.info(f'About to created index template: {template_name}')
 
                 # Create the template
                 try:
                     client.indices.put_index_template(name=template_name, body=mapping)
-                    print(f'Successfully created index template: {template_name}')
+                    logger.info(f'Successfully created index template: {template_name}')
                 except OpenSearchException as e:
                     logger.error(f'Failed to create index template: {template_name}, error: {str(e)}')
 
@@ -136,17 +139,34 @@ def load_dashboards():
                     )
                     response.raise_for_status()  # Raise an exception if the request failed
                     logger.info(f'Successfully loaded dashboard: {dashboard_name}')
-                    print(f'Successfully loaded: {dashboard_name}')
                 except requests.HTTPError as e:
                     logger.error(f'Failed to load dashboard: {dashboard_name}, error: {str(e)}')
 
 # create the data_streams based on the list given in the data-stream.json file
 def create_datasources():
     datasource_dir = '../datasource/'
+    # get current list of data sources
+    try:
+        response = requests.get(
+            url=f'https://{opensearch_host}:9200/_plugins/_query/_datasources',
+            auth=HTTPBasicAuth('admin', 'admin'),
+            verify=False,  # Disable SSL verification
+            headers={'Content-Type': 'application/json'}
+        )
+        response.raise_for_status()  # Raise an exception if the request failed
+        current_datasources = response.json()  # convert response to json
+    except requests.HTTPError as e:
+        logger.error(f'Failed to fetch datasources, error: {str(e)}')
+
     for filename in os.listdir(datasource_dir):
         if filename.endswith('.json'):
             with open(os.path.join(datasource_dir, filename), 'r') as f:
                 datasource = json.load(f)
+                # check if datasource already exists
+                if any(d['name'] == datasource['name'] for d in current_datasources):
+                    logger.info(f'Datasource already exists: {filename}')
+                    continue  # Skip to the next datasource if this one already exists
+
                 try:
                     response = requests.post(
                         url=f'https://{opensearch_host}:9200/_plugins/_query/_datasources',
@@ -157,17 +177,16 @@ def create_datasources():
                     )
                     response.raise_for_status()  # Raise an exception if the request failed
                     logger.info(f'Successfully created datasource: {filename}')
-                    print(f'Successfully created datasource: {filename}')
                 except requests.HTTPError as e:
-                    print(f'Failed to create datasource: {filename}, error: {str(e)}')
                     logger.error(f'Failed to create datasource: {filename}, error: {str(e)}')
+
 
 
 if __name__ == '__main__':
     # import all assets
     test_connection()
-    create_mapping_components(client)
-    create_mapping_templates(client)
-    create_data_streams()
-    load_dashboards()
+#     create_mapping_components(client)
+#     create_mapping_templates(client)
+#     create_data_streams()
+#     load_dashboards()
     create_datasources()
