@@ -30,7 +30,10 @@ client = OpenSearch(
     use_ssl = True,
     verify_certs = False,
     ssl_assert_hostname = False,
-    ssl_show_warn = False
+    ssl_show_warn = False,
+    timeout=20,
+    max_retries=50, # Increasing max_retries from 3 (default) to 5
+    retry_on_timeout=True
 )
 # verify connection to opensearch
 def test_connection():
