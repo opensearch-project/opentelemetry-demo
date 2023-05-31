@@ -1,5 +1,6 @@
 import os
 import json
+import time
 import logging
 from opensearchpy import OpenSearch, RequestsHttpConnection, OpenSearchException
 import requests
@@ -22,18 +23,8 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Create the client with SSL/TLS enabled, but hostname verification disabled.
-client = OpenSearch(
-    hosts = [{'host': opensearch_host, 'port': 9200}],
-    http_compress = True, # enables gzip compression for request bodies
-    http_auth = auth,
-    use_ssl = True,
-    verify_certs = False,
-    ssl_assert_hostname = False,
-    ssl_show_warn = False
-)
-# verify connection to opensearch
-def test_connection():
+# verify connection to opensearch - when successful create the transport client
+def test_connection(opensearch_host, auth):
     max_retries = 100  # Maximum number of retries
     retry_interval = 20  # Wait for 20 seconds between retries
 
@@ -46,16 +37,32 @@ def test_connection():
                 verify=False  # Disable SSL verification
             )
             response.raise_for_status()  # Raise an exception if the request failed
-            logger.info('Successfully connected to OpenSearch')
-            return  # Exit the function if connection is successful
-        except requests.HTTPError as e:
+            logging.info('Successfully connected to OpenSearch')
+            # Exit the function if connection is successful, return client
+            return create_client(opensearch_host, auth)
+        except (requests.exceptions.HTTPError, requests.exceptions.ConnectionError) as e:
             logging.error(f'Failed to connect to OpenSearch, error: {str(e)}')
 
-        logger.info(f'Attempt {i + 1} failed, waiting for {retry_interval} seconds before retrying...')
+        logging.info(f'Attempt {i + 1} failed, waiting for {retry_interval} seconds before retrying...')
         time.sleep(retry_interval)
 
-    logger.error(f'Failed to connect to OpenSearch after {max_retries} attempts')
+    logging.error(f'Failed to connect to OpenSearch after {max_retries} attempts')
     exit(1)  # Exit the program with an error code
+
+# Create the client with SSL/TLS enabled, but hostname verification disabled.
+def create_client(opensearch_host, auth):
+    return OpenSearch(
+        hosts = [{'host': opensearch_host, 'port': 9200}],
+        http_compress = True,  # enables gzip compression for request bodies
+        http_auth = auth,
+        use_ssl = True,
+        verify_certs = False,
+        ssl_assert_hostname = False,
+        ssl_show_warn = False,
+        timeout=20,
+        max_retries=50,  # Increasing max_retries from 3 (default) to 50
+        retry_on_timeout=True
+    )
 
 # create mapping components to compose the different observability categories
 def create_mapping_components(client):
@@ -185,7 +192,7 @@ def create_datasources():
 
 if __name__ == '__main__':
     # import all assets
-    test_connection()
+    client = test_connection(opensearch_host,auth)
     create_mapping_components(client)
     create_mapping_templates(client)
     create_data_streams()

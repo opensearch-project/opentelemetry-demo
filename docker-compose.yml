@@ -777,12 +777,15 @@ services:
 
 #   Observability OSD Integrations
   integrations:
+    container_name: opensearch-integrations
     build:
       context: ./src/integrations
       dockerfile: Dockerfile
     volumes:
       - ./src/integrations:/integrations
     depends_on:
+      - opensearch-node1
+      - opensearch-node2
       - opensearch-dashboards
 
   # *****
