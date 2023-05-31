@@ -17,6 +17,14 @@ git clone https://github.com/opensearch/opentelemetry-demo.git
 cd opentelemetry-demo
 docker compose up -d
 ```
+#### Known Issues
+In some cases few services might not load correctly - in such cases you may have to re-run the docker-compose command:
+```
+docker compose up -d
+```
+**_This is a known issue we are currently working on to resolve_** 
+
+---
 
 ### Services
 
@@ -35,9 +43,12 @@ The next instructions are similar and use the same docker compose file.
    ```
    docker compose up -d
    ```
-**Note:** The docker compose `--no-build` flag is used to fetch released docker images from [ghcr](http://ghcr.io/open-telemetry/demo) instead of building from source.
-Removing the `--no-build` command line option will rebuild all images from source. It may take more than 20 minutes to build if the flag is omitted.
+**Note:** 
 
+_The docker compose `--no-build` flag is used to fetch released docker images from [ghcr](http://ghcr.io/open-telemetry/demo) instead of building from source.
+Removing the `--no-build` command line option will rebuild all images from source. It may take more than 20 minutes to build if the flag is omitted._
+
+---
 ### Explore and analyze the data With OpenSearch Observability
 Review revised OpenSearch [Observability Architecture](architecture.md)
 
