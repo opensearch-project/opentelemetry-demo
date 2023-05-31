@@ -68,8 +68,7 @@
                   "type": "text"
                 },
                 "bytes": {
-                  "type": "keyword",
-                  "ignore_above": 256
+                  "type": "long"
                 },
                 "method": {
                   "type": "keyword",
@@ -101,12 +100,10 @@
                   "type": "text"
                 },
                 "bytes": {
-                  "type": "keyword",
-                  "ignore_above": 256
+                  "type": "long"
                 },
                 "status_code": {
-                  "type": "keyword",
-                  "ignore_above": 256
+                  "type": "integer"
                 }
               }
             }
