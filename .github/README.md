@@ -30,11 +30,15 @@ docker compose up -d
 
 Once the images are built and containers are started you can access:
 
-- Webstore-Proxy (Via Nginx Proxy): http://localhost:90/
-- Webstore: http://localhost:8080/
-- Dashboards: http://localhost:5061/
-- Feature Flags UI: http://localhost:8080/feature/
-- Load Generator UI: http://localhost:8080/loadgen/
+- Webstore-Proxy (Via Nginx Proxy): http://nginx:90/ (`nginx` DNS name needs to be added )
+    - [Defined here](https://github.com/opensearch-project/opentelemetry-demo/blob/079750428f1bddf16c029f30f478396e45559fec/.env#L58) 
+- Webstore: http://frontend:8080/ (`frontend` DNS name needs to be added )
+    - [Defined here](https://github.com/opensearch-project/opentelemetry-demo/blob/079750428f1bddf16c029f30f478396e45559fec/.env#L63) 
+- Dashboards: http://dashboards:5061/ (`dashboards` DNS name needs to be added )
+- Feature Flags UI: http://featureflag:8881/ (`featureflag` DNS name needs to be added )
+    - [Defined here](https://github.com/opensearch-project/opentelemetry-demo/blob/079750428f1bddf16c029f30f478396e45559fec/.env#LL47C31-L47C31)
+- Load Generator UI: http://loadgenerator:8089/ (`loadgenerator` DNS name needs to be added)
+    - [Defined here](https://github.com/opensearch-project/opentelemetry-demo/blob/079750428f1bddf16c029f30f478396e45559fec/.env#L66)
 
 OpenSearch has [documented](https://opensearch.org/docs/latest/observing-your-data/trace/trace-analytics-jaeger/#setting-up-opensearch-to-use-jaeger-data) the usage of the Observability plugin with jaeger as a trace signal source.
 
