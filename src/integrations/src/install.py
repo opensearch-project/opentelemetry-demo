@@ -163,6 +163,7 @@ def get_dist_version(auth):
 def upsert_obj(auth, items, api):
     for key in items:
         payload = json.loads(items[key])
+        logger.info(f' calling: https://{opensearch_host}:9200/{api}/{key}')
         res = requests.put(
             url=f'https://{opensearch_host}:9200/{api}/{key}',
             auth=auth,

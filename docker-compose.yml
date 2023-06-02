@@ -95,6 +95,7 @@ services:
       - "${CART_SERVICE_PORT}"
     environment:
       - CART_SERVICE_PORT
+      - FEATURE_FLAG_GRPC_SERVICE_ADDR
       - REDIS_ADDR
       - OTEL_EXPORTER_OTLP_ENDPOINT
       - OTEL_RESOURCE_ATTRIBUTES
@@ -296,7 +297,6 @@ services:
       - OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE
       - WEB_OTEL_SERVICE_NAME=frontend-web
     depends_on:
-      - accountingservice
       - adservice
       - cartservice
       - checkoutservice
@@ -306,7 +306,6 @@ services:
       - quoteservice
       - recommendationservice
       - shippingservice
-      - paymentservice
     logging: *logging
 
   # Load Generator
@@ -412,6 +411,7 @@ services:
     ports:
       - "${QUOTE_SERVICE_PORT}"
     environment:
+      - FEATURE_FLAG_GRPC_SERVICE_ADDR
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://${OTEL_COLLECTOR_HOST}:4318
       - OTEL_PHP_AUTOLOAD_ENABLED=true
       - QUOTE_SERVICE_PORT
