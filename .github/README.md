@@ -13,7 +13,7 @@ The following guide describes how to setup the OpenTelemetry demo with OpenSearc
 ### Running this demo
 
 ```bash
-git clone https://github.com/opensearch/opentelemetry-demo.git
+git clone https://github.com/opensearch-project/opentelemetry-demo.git
 cd opentelemetry-demo
 docker compose up -d
 ```
