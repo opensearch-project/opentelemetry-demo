@@ -1,11 +1,19 @@
+# Copyright The OpenTelemetry Authors
+# SPDX-License-Identifier: Apache-2.0
+
 import os
 import json
+import configparser
 import time
 import logging
 from opensearchpy import OpenSearch, RequestsHttpConnection, OpenSearchException
 import requests
 from requests.auth import HTTPBasicAuth
 import os
+
+# headers
+DASHBOARDS_HEADERS = {'Content-Type': 'application/json', 'osd-xsrf': 'true'}
+RESTAPI_HEADERS = {'Content-Type': 'application/json'}
 
 # load env variables
 opensearch_host = os.getenv('OPENSEARCH1_HOST', 'opensearch-node1')
@@ -23,6 +31,11 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# load all integration configuration data
+app_data = configparser.ConfigParser(
+        interpolation=configparser.ExtendedInterpolation())
+app_data.read('data.ini')
+
 # verify connection to opensearch - when successful create the transport client
 def test_connection(opensearch_host, auth):
     max_retries = 100  # Maximum number of retries
@@ -32,8 +45,8 @@ def test_connection(opensearch_host, auth):
         try:
             response = requests.get(
                 url=f'https://{opensearch_host}:9200/',
-                auth=HTTPBasicAuth('admin', 'admin'),
-                headers={'Content-Type': 'application/json'},
+                auth=auth,
+                headers=RESTAPI_HEADERS,
                 verify=False  # Disable SSL verification
             )
             response.raise_for_status()  # Raise an exception if the request failed
@@ -64,60 +77,15 @@ def create_client(opensearch_host, auth):
         retry_on_timeout=True
     )
 
-# create mapping components to compose the different observability categories
-def create_mapping_components(client):
-   mapping_dir = '../mapping-components/'
-   for filename in os.listdir(mapping_dir):
-        if filename.endswith('.mapping'):
-            with open(os.path.join(mapping_dir, filename), 'r') as f:
-                mapping = json.load(f)
-
-                template_name = os.path.splitext(filename)[0]  # Remove the .mapping extension
-                logger.info(f'About to load  template: {template_name}')
-                # Create the component template
-                try:
-                    response = requests.put(
-                        url=f'https://{opensearch_host}:9200/_component_template/{template_name}_template',
-                        auth=HTTPBasicAuth('admin', 'admin'),
-                        json=mapping,
-                        verify=False,  # Disable SSL verification
-                        headers={'Content-Type': 'application/json'}
-                    )
-                    response.raise_for_status()  # Raise an exception if the request failed
-                    logger.info(f'Successfully created component template: {template_name}')
-                except requests.HTTPError as e:
-                    logger.error(f'Failed to create component template: {template_name}, error: {str(e)}')
-
-# Create the templates from the mapping content
-def create_mapping_templates(client):
-    mapping_dir = '../mapping-templates/'
-    for filename in os.listdir(mapping_dir):
-        if filename.endswith('.mapping'):
-            with open(os.path.join(mapping_dir, filename), 'r') as f:
-                mapping = json.load(f)
-
-                template_name = os.path.splitext(filename)[0]  # Remove the .mapping extension
-                logger.info(f'About to created index template: {template_name}')
-
-                # Create the template
-                try:
-                    client.indices.put_index_template(name=template_name, body=mapping)
-                    logger.info(f'Successfully created index template: {template_name}')
-                except OpenSearchException as e:
-                    logger.error(f'Failed to create index template: {template_name}, error: {str(e)}')
-
 # create data streams
-def create_data_streams():
-    with open('../indices/data-stream.json', 'r') as f:
-        data = json.load(f)
-        data_streams = data.get('data-stream', [])
-
+def create_data_streams(auth,items,domain):
+        data_streams = items[domain].split(',')
         for ds in data_streams:
             try:
                 response = requests.put(
                     url=f'https://{opensearch_host}:9200/_data_stream/{ds}',
-                    auth=HTTPBasicAuth('admin', 'admin'),
-                    headers={'Content-Type': 'application/json'},
+                    auth=auth,
+                    headers=RESTAPI_HEADERS,
                     verify=False  # Disable SSL verification
                 )
                 response.raise_for_status()  # Raise an exception if the request failed
@@ -126,75 +94,122 @@ def create_data_streams():
                 logger.error(f'Failed to create data stream: {ds}, error: {str(e)}')
 
 # load dashboards in the display folder
-def load_dashboards():
-    dashboard_dir = '../display/'
-    for filename in os.listdir(dashboard_dir):
-        if filename.endswith('.ndjson'):
-            with open(os.path.join(dashboard_dir, filename), 'r') as f:
-                dashboard_data = f.read()
-                dashboard_name = os.path.splitext(filename)[0]  # Remove the .json extension
-                logger.info(f'About to load dashboard: {dashboard_name}')
-
-                # Load the dashboard
-                try:
-                    response = requests.post(
-                        url=f'http://{opensearch_dashboard}:5601/api/saved_objects/_import?overwrite=true',
-                        auth=HTTPBasicAuth('admin', 'admin'),
-                        files={'file': (f'{dashboard_name}.ndjson', dashboard_data)},
-                        headers={'osd-xsrf': 'true'},
-                        verify=False  # Disable SSL verification
-                    )
-                    response.raise_for_status()  # Raise an exception if the request failed
-                    logger.info(f'Successfully loaded dashboard: {dashboard_name}')
-                    print(f'Successfully loaded: {dashboard_name}')
-                except requests.HTTPError as e:
-                    logger.error(f'Failed to load dashboard: {dashboard_name}, error: {str(e)}')
+def load_dashboards(auth, items):
+    for key,value in items.items():
+        try:
+            response = requests.post(
+                url=f'http://{opensearch_dashboard}:5601/api/saved_objects/_import?overwrite=true',
+                auth=auth,
+                files={'file': (f'{key}.ndjson', value)},
+                headers={'osd-xsrf': 'true'},
+                verify=False  # Disable SSL verification
+            )
+            response.raise_for_status()  # Raise an exception if the request failed
+            logger.info(f'Successfully loaded dashboard: {key}')
+            print(f'Successfully loaded: {key}')
+        except requests.HTTPError as e:
+            logger.error(f'Failed to load dashboard: {key}, error: {str(e)}')
 
 # create the data_streams based on the list given in the data-stream.json file
-def create_datasources():
-    datasource_dir = '../datasource/'
-    # get current list of data sources
+def create_datasources(auth,items):
     try:
         response = requests.get(
             url=f'https://{opensearch_host}:9200/_plugins/_query/_datasources',
-            auth=HTTPBasicAuth('admin', 'admin'),
+            auth=auth,
             verify=False,  # Disable SSL verification
-            headers={'Content-Type': 'application/json'}
+            headers=RESTAPI_HEADERS
         )
         response.raise_for_status()  # Raise an exception if the request failed
         current_datasources = response.json()  # convert response to json
     except requests.HTTPError as e:
         logger.error(f'Failed to fetch datasources, error: {str(e)}')
 
-    for filename in os.listdir(datasource_dir):
-        if filename.endswith('.json'):
-            with open(os.path.join(datasource_dir, filename), 'r') as f:
-                datasource = json.load(f)
-                # check if datasource already exists
-                if any(d['name'] == datasource['name'] for d in current_datasources):
-                    logger.info(f'Datasource already exists: {filename}')
-                    continue  # Skip to the next datasource if this one already exists
+    for key,value in items.items():
+        datasource = json.loads(items[key])
+        # check if datasource already exists
+        if any(d['name'] == datasource['name'] for d in current_datasources):
+            logger.info(f'Datasource already exists: {key}')
+            continue  # Skip to the next datasource if this one already exists
 
-                try:
-                    response = requests.post(
-                        url=f'https://{opensearch_host}:9200/_plugins/_query/_datasources',
-                        auth=HTTPBasicAuth('admin', 'admin'),
-                        json=datasource,
-                        verify=False,  # Disable SSL verification
-                        headers={'Content-Type': 'application/json'}
-                    )
-                    response.raise_for_status()  # Raise an exception if the request failed
-                    logger.info(f'Successfully created datasource: {filename}')
-                except requests.HTTPError as e:
-                    logger.error(f'Failed to create datasource: {filename}, error: {str(e)}')
+        try:
+            response = requests.post(
+                url=f'https://{opensearch_host}:9200/_plugins/_query/_datasources',
+                auth=auth,
+                json=datasource,
+                verify=False,  # Disable SSL verification
+                headers=RESTAPI_HEADERS
+            )
+            response.raise_for_status()  # Raise an exception if the request failed
+            logger.info(f'Successfully created datasource: {key}')
+        except requests.HTTPError as e:
+            logger.error(f'Failed to create datasource: {key}, error: {str(e)}')
 
+# log distribution details
+def get_dist_version(auth):
+    logger.debug('start get_dist_version')
+    res = requests.get(f'https://{opensearch_host}:9200/',
+     auth=auth,
+     verify=False,  # Disable SSL verification
+    )
+    logger.info(res.text)
 
+    version = json.loads(res.text)['version']
+    domain_version = version['number']
+    lucene_version = version['lucene_version']
+    dist_name = version.get('distribution', 'elasticsearch')
+    return dist_name, domain_version
 
+# Generic upsert api using general endpoint
+def upsert_obj(auth, items, api):
+    for key in items:
+        payload = json.loads(items[key])
+        res = requests.put(
+            url=f'https://{opensearch_host}:9200/{api}/{key}',
+            auth=auth,
+            json=payload,
+            verify=False,  # Disable SSL verification
+            headers=RESTAPI_HEADERS
+        )
+        if res.status_code == 200:
+            logger.debug(output_message(key, res))
+        else:
+            logger.error(output_message(key, res))
+
+# format response message
+def output_message(key, res):
+    return f'{key}: status={res.status_code}, message={res.text}'
+
+# ----------------------------------------------------------------------------------------------------------------------
 if __name__ == '__main__':
-    # import all assets
+    # attempt connection to cluster
     client = test_connection(opensearch_host,auth)
-    create_mapping_components(client)
-    create_mapping_templates(client)
-    create_data_streams()
-    load_dashboards()
-    create_datasources()
+    # print distribution details
+    dist_name, domain_version = get_dist_version(auth)
+    logger.info(f'dist_name: {dist_name}, domain_version: {domain_version}')
+
+    # load composable index template
+    logger.info('Create/Update component index templates')
+    upsert_obj(auth, app_data['component-templates'],
+               api='_component_template')
+    # load index template
+    logger.info('Create/Update index templates')
+    upsert_obj(auth, app_data['index-templates'],
+               api='_index_template')
+    # load data stream
+    logger.info('Create/Update index templates')
+    upsert_obj(auth, app_data['index-templates'],
+               api='_index_template')
+    # load data-streams
+    logger.info('Create datastreams ')
+    create_data_streams(auth, app_data['datastreams'],
+               domain='observability')
+
+    # load data-source
+    logger.info('Create data-source ')
+    create_datasources(auth, app_data['datasources'])
+
+    # load dashboards
+    logger.info('Create dashboards ')
+    load_dashboards(auth, app_data['dashboards'])
+
+    logger.info('Finished loading assets ')
