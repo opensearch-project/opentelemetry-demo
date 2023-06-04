@@ -5,6 +5,7 @@
 # Local host that are used to help developing and debugging the OTEL demo locally
 
 # The IP address you want to associate with the hostname
+# IP="0.0.0.0"
 IP="127.0.0.1"
 
 # The hostname you want to associate with the IP address
