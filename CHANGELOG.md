@@ -35,8 +35,12 @@ release.
   ([#904](https://github.com/open-telemetry/opentelemetry-demo/pull/904))
 * [featureflagservice] Bump OTP version to 26.0
   ([#903](https://github.com/open-telemetry/opentelemetry-demo/pull/903))
+* Regenerate kubernetes manifest and add auto-generate comment
+  ([#909](https://github.com/open-telemetry/opentelemetry-demo/pull/909))
 * [loadgenerator] fix redirect on recommendations load
   ([#913](https://github.com/open-telemetry/opentelemetry-demo/pull/913))
+* [loadgenerator] run load through frontend proxy (Envoy)
+  ([#914](https://github.com/open-telemetry/opentelemetry-demo/pull/914))
 
 ## 1.4.0
 
