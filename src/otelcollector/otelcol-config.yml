@@ -63,6 +63,7 @@ processors:
 
 connectors:
   spanmetrics:
+    namespace: span.metrics
 
 extensions:
   health_check: {}
