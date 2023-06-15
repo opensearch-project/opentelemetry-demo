@@ -162,7 +162,7 @@ def get_dist_version(auth):
 # Generic upsert api using general endpoint
 def upsert_obj(auth, items, api):
     for key in items:
-        payload = json.loads(items[key])
+        payload = items[key]
         logger.info(f' calling: https://{opensearch_host}:9200/{api}/{key}')
         res = requests.put(
             url=f'https://{opensearch_host}:9200/{api}/{key}',
@@ -180,6 +180,31 @@ def upsert_obj(auth, items, api):
 def output_message(key, res):
     return f'{key}: status={res.status_code}, message={res.text}'
 
+# load component templates from opensearch-catalog and post them in the cluster
+def fetch_and_post_component_templates(api, folder, mode='include', fileNames=[]):
+    url = f'https://api.github.com/repos/opensearch-project/opensearch-catalog/contents/schema/observability/{folder}'
+    headers = {'Accept': 'application/vnd.github.v3+json'}
+    response = requests.get(url, headers=headers)
+    files = response.json()
+
+    for file in files:
+        base_name = file['name'].split('.')[0]  # get the base filename without the suffix
+        logger.info(f' file: {base_name}')
+        if file['name'].endswith('.mapping'):
+            if mode == 'exclude' and base_name not in fileNames:
+                process_file(file, api)
+            elif mode == 'include' and base_name in fileNames:
+                process_file(file, api)
+
+def process_file(file,api):
+    file_url = file['download_url']
+    file_content = requests.get(file_url).text
+    logger.info(f' loading json: {file_url}')
+    mapping = json.loads(file_content)
+    base_name = file['name'].split('.')[0]
+    template_name = f'{base_name}_template'
+    upsert_obj(auth, {template_name: mapping}, api)
+
 # ----------------------------------------------------------------------------------------------------------------------
 if __name__ == '__main__':
     # attempt connection to cluster
@@ -188,19 +213,19 @@ if __name__ == '__main__':
     dist_name, domain_version = get_dist_version(auth)
     logger.info(f'dist_name: {dist_name}, domain_version: {domain_version}')
 
-    # load composable index template
+    # load composable template
     logger.info('Create/Update component index templates')
-    upsert_obj(auth, app_data['component-templates'],
-               api='_component_template')
+    fetch_and_post_component_templates("_component_template","logs","exclude",["logs"])
+    fetch_and_post_component_templates("_component_template","traces","exclude",["traces","services"])
+    fetch_and_post_component_templates("_component_template","metrics","exclude",["metrics"])
+
     # load index template
     logger.info('Create/Update index templates')
-    upsert_obj(auth, app_data['index-templates'],
-               api='_index_template')
+    fetch_and_post_component_templates("_index_template","logs","include",["logs"])
+    fetch_and_post_component_templates("_index_template","traces","include",["traces","services"])
+    fetch_and_post_component_templates("_index_template","metrics","include",["metrics"])
+
     # load data stream
-    logger.info('Create/Update index templates')
-    upsert_obj(auth, app_data['index-templates'],
-               api='_index_template')
-    # load data-streams
     logger.info('Create datastreams ')
     create_data_streams(auth, app_data['datastreams'],
                domain='observability')
