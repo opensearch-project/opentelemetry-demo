@@ -15,3 +15,15 @@ scrape_configs:
   static_configs:
   - targets:
     - 'otelcol:8888'
+- job_name: opensearch
+  metrics_path: "/_prometheus/metrics"
+  static_configs:
+    - targets:
+        - opensearch-node1:9200
+        - opensearch-node2:9200
+  scheme: https
+  basic_auth:
+    username: admin
+    password: admin
+  tls_config:
+    insecure_skip_verify: true
