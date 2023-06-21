@@ -585,7 +585,7 @@ services:
   # ********************
   # data-prepper
   data-prepper:
-    image: opensearchproject/data-prepper:latest
+    image: opensearchproject/data-prepper:2.3.0
     container_name: data-prepper
     restart: unless-stopped
     volumes:
@@ -712,8 +712,10 @@ services:
 
   # OpenSearch store - node1
   opensearch-node1: # This is also the hostname of the container within the Docker network (i.e. https://opensearch-node1/)
-    image: opensearchproject/opensearch:2.7.0 # Specifying the latest available image - modify if you want a specific version
     container_name: opensearch-node1
+    build:
+      context: ./
+      dockerfile: ./src/opensearch/Dockerfile
     environment:
       - cluster.name=opensearch-cluster # Name the cluster
       - node.name=opensearch-node1 # Name the node that will run in this container
@@ -741,8 +743,10 @@ services:
 
   # OpenSearch store - node2
   opensearch-node2:
-    image: opensearchproject/opensearch:2.7.0 # This should be the same image used for opensearch-node1 to avoid issues
     container_name: opensearch-node2
+    build:
+      context: ./
+      dockerfile: ./src/opensearch/Dockerfile
     environment:
       - cluster.name=opensearch-cluster
       - node.name=opensearch-node2
