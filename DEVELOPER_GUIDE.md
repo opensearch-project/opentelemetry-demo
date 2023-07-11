@@ -45,7 +45,7 @@ cd .\src\adservice\
   all the images will be build):
 
 ```shell
-docker compose up -d
+docker-compose up -d
 ```
 
 ### Verify the Webstore & the Telemetry
