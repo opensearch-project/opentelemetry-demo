@@ -1,8 +1,8 @@
 # Declare a build argument for the version
-ARG VERSION
+ARG OPENSEARCH_VERSION
 
 # Use OpenSearch image as base
-FROM opensearchproject/opensearch:2.8.0
+FROM opensearchproject/opensearch:${OPENSEARCH_VERSION}
 
 # Install prometheus plugin (https://github.com/aiven/prometheus-exporter-plugin-for-opensearch)
 USER root

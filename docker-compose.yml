@@ -743,6 +743,8 @@ services:
     build:
       context: ./
       dockerfile: ./src/opensearch/Dockerfile
+      args:
+        - OPENSEARCH_VERSION=${OPENSEARCH_VERSION}
     environment:
       - cluster.name=opensearch-cluster # Name the cluster
       - node.name=opensearch-node1 # Name the node that will run in this container
@@ -774,6 +776,8 @@ services:
     build:
       context: ./
       dockerfile: ./src/opensearch/Dockerfile
+      args:
+        - OPENSEARCH_VERSION=${OPENSEARCH_VERSION}
     environment:
       - cluster.name=opensearch-cluster
       - node.name=opensearch-node2
@@ -793,7 +797,7 @@ services:
 
   # OpenSearch store - dashboard
   opensearch-dashboards:
-    image: opensearchproject/opensearch-dashboards:${VERSION} # Make sure the version of opensearch-dashboards matches the version of opensearch installed on other nodes
+    image: opensearchproject/opensearch-dashboards:${OPENSEARCH_VERSION} # Make sure the version of opensearch-dashboards matches the version of opensearch installed on other nodes
     container_name: opensearch-dashboards
     ports:
       - 5601:5601 # Map host port 5601 to container port 5601
