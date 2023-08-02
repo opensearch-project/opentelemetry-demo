@@ -740,12 +740,13 @@ services:
 
   # OpenSearch store - node1
   opensearch-node1: # This is also the hostname of the container within the Docker network (i.e. https://opensearch-node1/)
+    image: opensearchproject/opensearch:${OPENSEARCH_VERSION} # Specifying the latest available image - modify if you want a specific version
     container_name: opensearch-node1
-    build:
-      context: ./
-      dockerfile: ./src/opensearch/Dockerfile
-      args:
-        - OPENSEARCH_VERSION=${OPENSEARCH_VERSION}
+#    build:    # enable this section for locally build of the Opensearch with Prometheus metrics exporter
+#      context: ./
+#      dockerfile: ./src/opensearch/Dockerfile
+#      args:
+#        - OPENSEARCH_VERSION=${OPENSEARCH_VERSION}
     environment:
       - cluster.name=opensearch-cluster # Name the cluster
       - node.name=opensearch-node1 # Name the node that will run in this container
@@ -772,13 +773,14 @@ services:
       - "9600:9600"
 
   # OpenSearch store - node2
-  opensearch-node2:
+  opensearch-node2:  # This is also the hostname of the container within the Docker network (i.e. https://opensearch-node2/)
     container_name: opensearch-node2
-    build:
-      context: ./
-      dockerfile: ./src/opensearch/Dockerfile
-      args:
-        - OPENSEARCH_VERSION=${OPENSEARCH_VERSION}
+    image: opensearchproject/opensearch:${OPENSEARCH_VERSION} # Specifying the latest available image - modify if you want a specific version
+#    build:   # enable this section for locally build of the Opensearch with Prometheus metrics exporter
+#      context: ./
+#      dockerfile: ./src/opensearch/Dockerfile
+#      args:
+#        - OPENSEARCH_VERSION=${OPENSEARCH_VERSION}
     environment:
       - cluster.name=opensearch-cluster
       - node.name=opensearch-node2
