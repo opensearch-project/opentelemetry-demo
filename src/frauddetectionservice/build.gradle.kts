@@ -15,7 +15,7 @@ group = "io.opentelemetry"
 version = "1.0"
 
 
-val grpcVersion = "1.50.3"
+val grpcVersion = "1.57.0"
 val protobufVersion = "3.16.1"
 
 
@@ -30,7 +30,7 @@ dependencies {
     implementation("com.google.protobuf:protobuf-java:3.21.7")
     testImplementation(kotlin("test"))
     implementation(kotlin("script-runtime"))
-    implementation("org.apache.kafka:kafka-clients:3.4.0")
+    implementation("org.apache.kafka:kafka-clients:3.5.1")
     implementation("com.google.api.grpc:proto-google-common-protos:2.9.6")
     implementation("io.grpc:grpc-protobuf:${grpcVersion}")
     implementation("io.grpc:grpc-stub:${grpcVersion}")
