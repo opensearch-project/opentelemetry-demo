@@ -20,7 +20,7 @@
     "@opentelemetry/exporter-metrics-otlp-grpc": "0.38.0",
     "@opentelemetry/exporter-trace-otlp-grpc": "0.38.0",
     "@opentelemetry/exporter-trace-otlp-http": "0.38.0",
-    "@opentelemetry/instrumentation": "0.38.0",
+    "@opentelemetry/instrumentation": "0.42.0",
     "@opentelemetry/resources": "1.12.0",
     "@opentelemetry/sdk-metrics": "1.12.0",
     "@opentelemetry/sdk-node": "0.38.0",
