@@ -34,7 +34,7 @@ requests==2.31.0
 roundrobin==0.0.4
 six==1.16.0
 typing-extensions==4.5.0
-urllib3==1.26.15
+urllib3==1.26.17
 werkzeug==2.3.3
 wrapt==1.15.0
 zope-event==4.6
