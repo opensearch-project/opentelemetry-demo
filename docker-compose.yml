@@ -380,9 +380,6 @@ services:
     logging: *logging
 
   # Product Catalog service
-  # if proxy.golang.org is experiencing i/o timeout use the next:
-  #  - go env -w GOPROXY=direct
-  #  - go env -w GOSUMDB=off
   productcatalogservice:
     image: ${IMAGE_NAME}:${IMAGE_VERSION}-productcatalogservice
     container_name: product-catalog-service
@@ -433,6 +430,7 @@ services:
       - QUOTE_SERVICE_PORT
       - OTEL_RESOURCE_ATTRIBUTES
       - OTEL_SERVICE_NAME=quoteservice
+      - OTEL_PHP_INTERNAL_METRICS_ENABLED=true
     depends_on:
       otelcol:
         condition: service_started
@@ -538,7 +536,7 @@ services:
   # ******************
   # Postgres used by Feature Flag service
   ffs_postgres:
-    image: postgres:14
+    image: postgres:16.0
     container_name: postgres
     user: postgres
     deploy:
@@ -588,7 +586,7 @@ services:
 
   # Redis used by Cart service
   redis-cart:
-    image: redis:alpine
+    image: redis:7.2-alpine
     container_name: redis-cart
     user: redis
     deploy:
@@ -646,11 +644,10 @@ services:
       - ES_USERNAME=admin
       - ES_PASSWORD=admin
       - ES_TLS_SKIP_HOST_VERIFY=true
+    logging: *logging
     depends_on:
       - opensearch-node1
       - opensearch-node2
-
-    logging: *logging
 
   jaeger-agent:
     image: jaegertracing/jaeger-agent:latest
@@ -671,12 +668,14 @@ services:
 
   # Grafana
   grafana:
-    image: grafana/grafana:9.4.7
+    image: grafana/grafana:10.1.2
     container_name: grafana
     deploy:
       resources:
         limits:
           memory: 100M
+    environment:
+      - "GF_INSTALL_PLUGINS=grafana-opensearch-datasource"
     volumes:
       - ./src/grafana/grafana.ini:/etc/grafana/grafana.ini
       - ./src/grafana/provisioning/:/etc/grafana/provisioning/
@@ -686,23 +685,16 @@ services:
 
   # OpenTelemetry Collector
   otelcol:
-    image: otel/opentelemetry-collector-contrib:0.81.0
+    image: otel/opentelemetry-collector-contrib:0.86.0
     container_name: otel-col
-#    image: ${IMAGE_NAME}:${IMAGE_VERSION}-otelcol
-#    build:
-#      context: ./
-#      dockerfile: ./src/otelcollector/Dockerfile
-#      cache_from:
-#        - ${IMAGE_NAME}:${IMAGE_VERSION}-otelcol
     deploy:
       resources:
         limits:
           memory: 125M
     restart: unless-stopped
-    command: [ "--config=/etc/otelcol-config.yml", "--config=/etc/otelcol-observability.yml", "--config=/etc/otelcol-config-extras.yml" ]
+    command: [ "--config=/etc/otelcol-config.yml", "--config=/etc/otelcol-config-extras.yml" ]
     volumes:
       - ./src/otelcollector/otelcol-config.yml:/etc/otelcol-config.yml
-      - ./src/otelcollector/otelcol-observability.yml:/etc/otelcol-observability.yml
       - ./src/otelcollector/otelcol-config-extras.yml:/etc/otelcol-config-extras.yml
     ports:
       - "4317"            # OTLP over gRPC receiver
@@ -717,7 +709,7 @@ services:
 
   # Prometheus
   prometheus:
-    image: quay.io/prometheus/prometheus:v2.43.0
+    image: quay.io/prometheus/prometheus:v2.47.0
     container_name: prometheus
     command:
       - --web.console.templates=/etc/prometheus/consoles
@@ -728,6 +720,7 @@ services:
       - --web.enable-lifecycle
       - --web.route-prefix=/
       - --enable-feature=exemplar-storage
+      - --enable-feature=otlp-write-receiver
     volumes:
       - ./src/prometheus/prometheus-config.yaml:/etc/prometheus/prometheus-config.yaml
     deploy:
@@ -738,56 +731,17 @@ services:
       - "${PROMETHEUS_SERVICE_PORT}:${PROMETHEUS_SERVICE_PORT}"
     logging: *logging
 
-  # OpenSearch store - node1
-  opensearch-node1: # This is also the hostname of the container within the Docker network (i.e. https://opensearch-node1/)
-    image: opensearchproject/opensearch:${OPENSEARCH_VERSION} # Specifying the latest available image - modify if you want a specific version
-    container_name: opensearch-node1
-#    build:    # enable this section for locally build of the Opensearch with Prometheus metrics exporter
-#      context: ./
-#      dockerfile: ./src/opensearch/Dockerfile
-#      args:
-#        - OPENSEARCH_VERSION=${OPENSEARCH_VERSION}
+  opensearch:
+    image: opensearchproject/opensearch:latest
+    container_name: opensearch
     environment:
-      - cluster.name=opensearch-cluster # Name the cluster
-      - node.name=opensearch-node1 # Name the node that will run in this container
-      - discovery.seed_hosts=opensearch-node1,opensearch-node2 # Nodes to look for when discovering the cluster
-      - cluster.initial_cluster_manager_nodes=opensearch-node1,opensearch-node2 # Nodes eligible to serve as cluster manager
-      - bootstrap.memory_lock=true # Disable JVM heap memory swapping
-      - "OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m" # Set min and max JVM heap sizes to at least 50% of system RAM
-    ulimits:
-      memlock:
-        soft: -1 # Set memlock to unlimited (no soft or hard limit)
-        hard: -1
-      nofile:
-        soft: 65536 # Maximum number of open files for the opensearch user - set to at least 65536
-        hard: 65536
-    volumes:
-      - opensearch-data1:/usr/share/opensearch/data # Creates volume called opensearch-data1 and mounts it to the container
-    healthcheck:
-      test: ["CMD", "curl", "-f", "https://opensearch-node1:9200/_cluster/health?wait_for_status=yellow", "-ku admin:admin"]
-      interval: 5s
-      timeout: 25s
-      retries: 4
-    ports:
-      - "9200:9200"
-      - "9600:9600"
-
-  # OpenSearch store - node2
-  opensearch-node2:  # This is also the hostname of the container within the Docker network (i.e. https://opensearch-node2/)
-    container_name: opensearch-node2
-    image: opensearchproject/opensearch:${OPENSEARCH_VERSION} # Specifying the latest available image - modify if you want a specific version
-#    build:   # enable this section for locally build of the Opensearch with Prometheus metrics exporter
-#      context: ./
-#      dockerfile: ./src/opensearch/Dockerfile
-#      args:
-#        - OPENSEARCH_VERSION=${OPENSEARCH_VERSION}
-    environment:
-      - cluster.name=opensearch-cluster
-      - node.name=opensearch-node2
-      - discovery.seed_hosts=opensearch-node1,opensearch-node2
-      - cluster.initial_cluster_manager_nodes=opensearch-node1,opensearch-node2
+      - cluster.name=demo-cluster
+      - node.name=demo-node
       - bootstrap.memory_lock=true
+      - discovery.type=single-node
       - "OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m"
+      - "DISABLE_INSTALL_DEMO_CONFIG=true"
+      - "DISABLE_SECURITY_PLUGIN=true"
     ulimits:
       memlock:
         soft: -1
@@ -795,36 +749,19 @@ services:
       nofile:
         soft: 65536
         hard: 65536
-    volumes:
-      - opensearch-data2:/usr/share/opensearch/data
-
-  # OpenSearch store - dashboard
-  opensearch-dashboards:
-    image: opensearchproject/opensearch-dashboards:${OPENSEARCH_VERSION} # Make sure the version of opensearch-dashboards matches the version of opensearch installed on other nodes
-    container_name: opensearch-dashboards
     ports:
-      - 5601:5601 # Map host port 5601 to container port 5601
-    expose:
-      - "5601" # Expose port 5601 for web access to OpenSearch Dashboards
-    environment:
-      OPENSEARCH_HOSTS: '["https://opensearch-node1:9200","https://opensearch-node2:9200"]' # Define the OpenSearch nodes that OpenSearch Dashboards will query
-    depends_on:
-      - opensearch-node1
-      - opensearch-node2
-      - prometheus
+      - "9200:9200"
+    logging: *logging
 
-#   Observability OSD Integrations
-  integrations:
-    container_name: opensearch-integrations
-    build:
-      context: ./src/integrations
-      dockerfile: Dockerfile
+  dataprepper:
+    image: opensearchproject/data-prepper:latest
     volumes:
-      - ./src/integrations:/integrations
-    depends_on:
-      - opensearch-node1
-      - opensearch-node2
-      - opensearch-dashboards
+      - ./src/opensearch/pipelines.yaml:/usr/share/data-prepper/pipelines/pipelines.yaml
+      - ./src/opensearch/data-prepper-config.yaml:/usr/share/data-prepper/config/data-prepper-config.yaml
+    ports:
+      - "21892"
+    logging: *logging
+
 
   # *****
   # Tests
@@ -899,6 +836,7 @@ services:
       - PRODUCT_CATALOG_SERVICE_ADDR
       - RECOMMENDATION_SERVICE_ADDR
       - SHIPPING_SERVICE_ADDR
+      - KAFKA_SERVICE_ADDR
     extra_hosts:
       - "host.docker.internal:host-gateway"
     depends_on:
@@ -927,9 +865,13 @@ services:
         condition: service_started
       quoteservice:
         condition: service_started
+      accountingservice:
+        condition: service_started
+      frauddetectionservice:
+        condition: service_started
 
   tracetest-server:
-    image: kubeshop/tracetest:latest
+    image: kubeshop/tracetest:v0.13.10
     platform: linux/amd64
     container_name: tracetest-server
     profiles:
@@ -958,7 +900,7 @@ services:
       retries: 60
 
   tracetest-postgres:
-    image: postgres:14
+    image: postgres:16.0
     container_name: tracetest-postgres
     profiles:
       - tests
