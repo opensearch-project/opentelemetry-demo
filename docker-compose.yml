@@ -501,7 +501,7 @@ services:
       - "24224:24224"
       - "24224:24224/udp"
     depends_on:
-      - opensearch-node1
+      - opensearch
 
   # Shipping service
   shippingservice:
@@ -612,7 +612,7 @@ services:
     ports:
       - "21890:21890"
     depends_on:
-      - opensearch-node1
+      - opensearch
 
   # Jaeger
   jaeger:
@@ -622,7 +622,7 @@ services:
       - "--memory.max-traces=8000"
       - "--metrics-backend=prometheus"
       - "--query.base-path=/jaeger/ui"
-      - "--es.server-urls=https://opensearch-node1:9200"
+      - "--es.server-urls=https://opensearch:9200"
       - "--es.tls.enabled=true"
       - "--prometheus.server-url=http://${PROMETHEUS_ADDR}"
       - "--prometheus.query.normalize-calls=true"
@@ -650,8 +650,7 @@ services:
       - ES_TLS_SKIP_HOST_VERIFY=true
     logging: *logging
     depends_on:
-      - opensearch-node1
-      - opensearch-node2
+      - opensearch
 
   jaeger-agent:
     image: jaegertracing/jaeger-agent:latest

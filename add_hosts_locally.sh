@@ -9,7 +9,7 @@
 IP="127.0.0.1"
 
 # The hostname you want to associate with the IP address
-OPENSEARCH_HOST="opensearch-node1"
+OPENSEARCH_HOST="opensearch"
 OPENSEARCH_DASHBOARD="opensearch-dashboards"
 OTEL_STORE="frontend"
 FEATURE_FLAG_SERVICE="feature-flag-service"

@@ -19,8 +19,7 @@ scrape_configs:
   metrics_path: "/_prometheus/metrics"
   static_configs:
     - targets:
-        - opensearch-node1:9200
-        - opensearch-node2:9200
+        - opensearch:9200
   scheme: https
   basic_auth:
     username: admin

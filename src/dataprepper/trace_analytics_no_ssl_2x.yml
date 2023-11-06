@@ -16,7 +16,7 @@ raw-pipeline:
     - otel_trace_raw:
   sink:
     - opensearch:
-        hosts: [ "https://opensearch-node1:9200" ]
+        hosts: [ "https://opensearch:9200" ]
         insecure: true
         username: "admin"
         password: "admin"
@@ -30,7 +30,7 @@ service-map-pipeline:
     - service_map_stateful:
   sink:
     - opensearch:
-        hosts: ["https://opensearch-node1:9200"]
+        hosts: ["https://opensearch:9200"]
         insecure: true
         username: "admin"
         password: "admin"

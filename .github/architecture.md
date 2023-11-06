@@ -36,7 +36,7 @@ Backend supportive services
    - See [description](https://opentelemetry.io/docs/demo/services/load-generator/)
  - [Frontend Nginx Proxy](http://nginx:90) *(replacement for _Frontend-Proxy_)*
    - See [description](../src/nginx-otel/README.md)
- - [OpenSearch](https://opensearch-node1:9200)
+ - [OpenSearch](https://opensearch:9200)
     - See [description](https://github.com/opensearch-project/opentelemetry-demo/blob/12d52cbb23bbf4226f6de2dfec840482a0a7d054/docker-compose.yml#L697)
  - [Dashboards](http://opensearch-dashboards:5601)
    - See [description](https://github.com/opensearch-project/opentelemetry-demo/blob/12d52cbb23bbf4226f6de2dfec840482a0a7d054/docker-compose.yml#L747) 

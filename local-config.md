@@ -16,7 +16,7 @@ run the [following script](add_hosts_locally.sh) to map the docker-compose servi
 ```text
 # The hostname you want to associate with the IP address
 
-OPENSEARCH_HOST="opensearch-node1"
+OPENSEARCH_HOST="opensearch"
 OPENSEARCH_DASHBOARD="opensearch-dashboards"
 OTEL_STORE="frontend"
 OTEL_LOADER="loadgenerator"
