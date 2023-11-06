@@ -39,16 +39,6 @@ The ingestion capabilities for OpenSearch is to be able to support multiple pipe
 - [Jaeger](https://opensearch.org/docs/latest/observing-your-data/trace/trace-analytics-jaeger/) is an ingestion framework which has a build in capability for pushing OTEL signals into OpenSearch
 - [Fluent-Bit](https://docs.fluentbit.io/manual/pipeline/outputs/opensearch) is an ingestion framework which has a build in capability for pushing OTEL signals into OpenSearch
 
-### Integrations 
-The integration service is a list of pre-canned assets that are loaded in a combined manner to allow users the ability for simple and automatic way to discover and review their services topology.
-
-These (demo-sample) integrations contain the following assets:
-- components & index template mapping
-- datasources
-- data-stream & indices
-- queries
-- dashboards_
-
 ### Tutorials
 
 Welcome to the OpenSearch Observability tutorials!
