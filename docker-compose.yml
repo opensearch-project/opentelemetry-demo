@@ -754,7 +754,7 @@ services:
       retries: 10
 
   # OpenSearch store - dashboard
-  dataprepper:
+  data-prepper:
     image: opensearchproject/data-prepper:latest
     volumes:
       - ./src/opensearch/pipelines.yaml:/usr/share/data-prepper/pipelines/pipelines.yaml
@@ -772,7 +772,7 @@ services:
     expose:
       - "5601" # Expose port 5601 for web access to OpenSearch Dashboards
     environment:
-      OPENSEARCH_HOSTS: '["https://opensearch:9200"]' # Define the OpenSearch nodes that OpenSearch Dashboards will query
+      OPENSEARCH_HOSTS: '["http://opensearch:9200"]' # Define the OpenSearch nodes that OpenSearch Dashboards will query
     depends_on:
       - opensearch
       - prometheus
