@@ -619,14 +619,9 @@ services:
     image: jaegertracing/jaeger-collector:latest
     container_name: jaeger
     command:
-      - "--memory.max-traces=8000"
       - "--metrics-backend=prometheus"
-      - "--query.base-path=/jaeger/ui"
       - "--es.server-urls=https://opensearch:9200"
-      - "--es.tls.enabled=true"
-      - "--prometheus.server-url=http://${PROMETHEUS_ADDR}"
-      - "--prometheus.query.normalize-calls=true"
-      - "--prometheus.query.normalize-duration=true"
+      - "--es.tls.enabled=false"
     deploy:
       resources:
         limits:
@@ -738,7 +733,7 @@ services:
 
   # OpenSearch store - engine
   opensearch:
-    image: opensearchproject/opensearch:latest
+    image: opensearchproject/opensearch:${OPENSEARCH_VERSION}
     container_name: opensearch
     environment:
       - cluster.name=demo-cluster
@@ -773,7 +768,7 @@ services:
 
   # OpenSearch store - dashboard
   opensearch-dashboards:
-    image: opensearchproject/opensearch-dashboards:latest # Make sure the version of opensearch-dashboards matches the version of opensearch installed on other nodes
+    image: opensearchproject/opensearch-dashboards:${OPENSEARCH_VERSION} # Make sure the version of opensearch-dashboards matches the version of opensearch installed on other nodes
     container_name: opensearch-dashboards
     ports:
       - 5601:5601 # Map host port 5601 to container port 5601

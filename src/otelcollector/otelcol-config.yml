@@ -48,18 +48,14 @@ processors:
 connectors:
   spanmetrics:
 
-extensions:
-  health_check: {}
-
 service:
-  extensions: [health_check]
   pipelines:
     traces:
       receivers: [otlp]
-      processors: [memory_limiter, batch]
-      exporters: [otlp, debug, spanmetrics, otlp/2]
+      processors: [batch]
+      exporters: [otlp, debug, spanmetrics]
     metrics:
-      receivers: [httpcheck/frontendproxy, otlp, spanmetrics]
+      receivers: [otlp, spanmetrics]
       processors: [filter/ottl, transform, batch]
       exporters: [otlphttp/prometheus, debug]
     logs:
