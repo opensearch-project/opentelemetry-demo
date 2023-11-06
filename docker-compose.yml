@@ -608,7 +608,7 @@ services:
     container_name: jaeger
     command:
       - "--metrics-backend=prometheus"
-      - "--es.server-urls=http://opensearch:9200"
+      - "--es.server-urls=https://opensearch:9200"
       - "--es.tls.enabled=true"
     deploy:
       resources:
@@ -730,8 +730,6 @@ services:
       - cluster.initial_cluster_manager_nodes=opensearch
       - bootstrap.memory_lock=true
       - "OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m"
-      - "DISABLE_INSTALL_DEMO_CONFIG=true"
-      - "DISABLE_SECURITY_PLUGIN=true"
     ulimits:
       memlock:
         soft: -1
@@ -748,7 +746,7 @@ services:
     expose:
       - "9200"
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9200/_cluster/health?wait_for_status=yellow"]
+      test: ["CMD", "curl", "-f", "https://localhost:9200/_cluster/health?wait_for_status=yellow"]
       interval: 20s
       timeout: 10s
       retries: 10
@@ -772,7 +770,7 @@ services:
     expose:
       - "5601" # Expose port 5601 for web access to OpenSearch Dashboards
     environment:
-      OPENSEARCH_HOSTS: '["http://opensearch:9200"]' # Define the OpenSearch nodes that OpenSearch Dashboards will query
+      OPENSEARCH_HOSTS: '["https://opensearch:9200"]' # Define the OpenSearch nodes that OpenSearch Dashboards will query
     depends_on:
       - opensearch
       - prometheus
