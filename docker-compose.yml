@@ -744,6 +744,7 @@ services:
     ports:
       - 9200:9200
       - 9600:9600
+    logging: *logging
     expose:
       - "9200"
     healthcheck:
