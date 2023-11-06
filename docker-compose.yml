@@ -608,7 +608,7 @@ services:
     container_name: jaeger
     command:
       - "--metrics-backend=prometheus"
-      - "--es.server-urls=https://opensearch:9200"
+      - "--es.server-urls=http://opensearch:9200"
       - "--es.tls.enabled=true"
     deploy:
       resources:
