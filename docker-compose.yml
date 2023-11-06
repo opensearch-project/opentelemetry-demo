@@ -601,18 +601,6 @@ services:
   # ********************
   # Telemetry Components
   # ********************
-  # data-prepper
-  data-prepper:
-    image: opensearchproject/data-prepper:latest
-    container_name: data-prepper
-    restart: unless-stopped
-    volumes:
-      - ./src/dataprepper/trace_analytics_no_ssl_2x.yml:/usr/share/data-prepper/pipelines/pipelines.yaml
-      - ./src/dataprepper/data-prepper-config.yaml:/usr/share/data-prepper/config/data-prepper-config.yaml
-    ports:
-      - "21890:21890"
-    depends_on:
-      - opensearch
 
   # Jaeger
   jaeger:
@@ -621,7 +609,7 @@ services:
     command:
       - "--metrics-backend=prometheus"
       - "--es.server-urls=https://opensearch:9200"
-      - "--es.tls.enabled=false"
+      - "--es.tls.enabled=true"
     deploy:
       resources:
         limits:
@@ -733,13 +721,14 @@ services:
 
   # OpenSearch store - engine
   opensearch:
-    image: opensearchproject/opensearch:${OPENSEARCH_VERSION}
+    image: opensearchstaging/opensearch:${OPENSEARCH_VERSION}
     container_name: opensearch
     environment:
-      - cluster.name=demo-cluster
-      - node.name=demo-node
+      - cluster.name=opensearch-cluster
+      - node.name=opensearch
+      - discovery.seed_hosts=opensearch
+      - cluster.initial_cluster_manager_nodes=opensearch
       - bootstrap.memory_lock=true
-      - discovery.type=single-node
       - "OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m"
       - "DISABLE_INSTALL_DEMO_CONFIG=true"
       - "DISABLE_SECURITY_PLUGIN=true"
@@ -748,13 +737,20 @@ services:
         soft: -1
         hard: -1
       nofile:
-        soft: 65536
+        soft: 65536 # Maximum number of open files for the opensearch user - set to at least 65536
         hard: 65536
     volumes:
       - opensearch-data:/usr/share/opensearch/data # Creates volume called opensearch-data1 and mounts it to the container
     ports:
-      - "9200:9200"
-    logging: *logging
+      - 9200:9200
+      - 9600:9600
+    expose:
+      - "9200"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9200/_cluster/health?wait_for_status=yellow"]
+      interval: 20s
+      timeout: 10s
+      retries: 10
 
   # OpenSearch store - dashboard
   dataprepper:
