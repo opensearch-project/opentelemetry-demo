@@ -689,7 +689,6 @@ services:
       - "8888" # metrics endpoint
     depends_on:
       - jaeger-agent
-      - jaeger-query
       - data-prepper
     logging: *logging
     environment:
@@ -754,8 +753,9 @@ services:
   # OpenSearch store - dashboard
   data-prepper:
     image: opensearchproject/data-prepper:latest
+    container_name: dataprepper
     volumes:
-      - ./src/dataprepper/pipelines.yaml:/usr/share/data-prepper/pipelines/pipelines.yaml
+      - ./src/dataprepper/pipelines.yaml:/usr/share/data-prepper/pipelines/trace_analytics_no_ssl_2x.yml
       - ./src/dataprepper/data-prepper-config.yaml:/usr/share/data-prepper/config/data-prepper-config.yaml
     ports:
       - "21892"
