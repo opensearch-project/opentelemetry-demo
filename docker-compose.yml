@@ -657,8 +657,7 @@ services:
       - ES_PASSWORD=admin
       - ES_TLS_SKIP_HOST_VERIFY=true
     depends_on:
-      - opensearch-node1
-      - opensearch-node2
+      - opensearch
     logging: *logging
 
   jaeger-agent:
