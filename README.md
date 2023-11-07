@@ -99,7 +99,7 @@ Emeritus:
 
 [![contributors](https://contributors-img.web.app/image?repo=open-telemetry/opentelemetry-demo)](https://github.com/open-telemetry/opentelemetry-demo/graphs/contributors)
 
-[docs]: xhttps://opentelemetry.io/docs/demo/
+[docs]: https://opentelemetry.io/docs/demo/
 
 <!-- Links for Demos featuring the Astronomy Shop section -->
 
