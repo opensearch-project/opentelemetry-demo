@@ -741,6 +741,7 @@ services:
         hard: 65536
     volumes:
       - opensearch-data:/usr/share/opensearch/data # Creates volume called opensearch-data1 and mounts it to the container
+      - ./src/opensearch/opensearch.yml:/usr/share/opensearch/config/opensearch.yml # Mount the local opensearch.yml to the container's config directory
     ports:
       - 9200:9200
       - 9600:9600
