@@ -1,70 +1,10 @@
 # OTEL Collector Pipeline
 
-The next diagram describes the Observability signals pipeline defined inside the OTEL collector
-
-```mermaid
-%%{
-  init: {
-    'theme': 'base',
-    'themeVariables': {
-      'primaryColor': '#BB2528',
-      'primaryTextColor': '#fff',
-      'primaryBorderColor': '#7C0000',
-      'lineColor': '#F8B229',
-      'secondaryColor': '#006100',
-      'tertiaryColor': '#fff'
-    }
-  }
-}%%
-
-graph LR
-    otlp-->otlpReceiverTraces["otlp Receiver"]
-    style otlpReceiverTraces fill:#f9d,stroke:#333,stroke-width:4px
-    otlp-->otlpReceiverMetrics["otlp Receiver"]
-    style otlpReceiverMetrics fill:#f9d,stroke:#333,stroke-width:4px
-    otlp-->otlpReceiverLogs["otlp Receiver"]
-    style otlpReceiverLogs fill:#f9d,stroke:#333,stroke-width:4px
-    otlpServiceGraph-->otlpServiceGraphReceiver["otlp/servicegraph Receiver"]
-    spanmetrics-->spanmetricsReceiver["spanmetrics Receiver"]
-
-    subgraph Traces Pipeline
-    otlpReceiverTraces-->tracesProcessor["Traces Processor"]
-    style tracesProcessor fill:#9cf,stroke:#333,stroke-width:4px
-    tracesProcessor-->otlpExporter["otlp Exporter"]
-    tracesProcessor-->loggingExporterTraces["Logging Exporter"]
-
-    tracesProcessor-->spanmetricsExporter["Spanmetrics Exporter"]
-    tracesProcessor-->otlp2Exporter["otlp/2 Exporter"]
-    end
-    
-    subgraph Metrics/Servicegraph Pipeline
-    otlpServiceGraphReceiver-->metricsServiceGraphProcessor["Metrics/ServiceGraph Processor"]
-    style otlpServiceGraphReceiver fill:#f9d,stroke:#333,stroke-width:4px
-    metricsServiceGraphProcessor-->prometheusServiceGraphExporter["Prometheus/ServiceGraph Exporter"]
-    style metricsServiceGraphProcessor fill:#9cf,stroke:#333,stroke-width:4px
-    end
-    
-    subgraph Metrics Pipeline
-    otlpReceiverMetrics-->metricsProcessor["Metrics Processor"]
-    style metricsProcessor fill:#9cf,stroke:#333,stroke-width:4px
-
-    spanmetricsReceiver-->metricsProcessor
-    style spanmetricsReceiver fill:#f9d,stroke:#333,stroke-width:4px
-    metricsProcessor-->prometheusExporter["Prometheus Exporter"]
-    metricsProcessor-->loggingExporterMetrics["Logging Exporter"]
-    end
-
-    subgraph Logs Pipeline
-    otlpReceiverLogs-->logsProcessor["Logs Processor"]
-    style logsProcessor fill:#9cf,stroke:#333,stroke-width:4px
-    logsProcessor-->loggingExporterLogs["Logging Exporter"]
-    end
-
-
-```
 
 ### Traces
 The traces  pipeline consists of a receiver, multiple processors, and multiple exporters.
+
+![](img/traces-pipe.png)
 
 **Receiver (otlp):**
 This is where the data comes in from. In your configuration, the traces pipeline is using the otlp receiver. OTLP stands for OpenTelemetry Protocol. This receiver is configured to accept data over both gRPC and HTTP protocols. The HTTP protocol is also configured to allow CORS from any origin.
@@ -93,6 +33,7 @@ After processing, the data is sent to the configured exporters:
 **Metrics Pipeline**
 
 This pipeline handles metric data.
+![](img/metrics-pipe.png)
 
 - **Receivers (otlp, spanmetrics):**
 
@@ -114,6 +55,7 @@ The processed data is then exported:
 **Logs Pipeline**
 
 This pipeline handles log data.
+![](img/logs-pipe.png)
 
 - **Receiver (otlp):**
 

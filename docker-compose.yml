@@ -761,7 +761,7 @@ services:
 
   # OpenSearch store - dashboard
   data-prepper:
-    image: opensearchproject/data-prepper:latest
+    image: opensearchproject/data-prepper:2.6.1
     container_name: dataprepper
     volumes:
       - /data/service-map/
