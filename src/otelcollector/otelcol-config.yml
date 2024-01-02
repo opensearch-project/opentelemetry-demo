@@ -17,6 +17,11 @@ exporters:
     endpoint: "jaeger:4317"
     tls:
       insecure: true
+  opensearch/traces:
+    http:
+      endpoint: https://opensearch:9200
+      auth:
+        authenticator: basicauth/client
   otlp/traces:
     endpoint: "data-prepper:21890"
     tls:
@@ -63,7 +68,7 @@ service:
     traces:
       receivers: [otlp]
       processors: [batch]
-      exporters: [otlp, debug, spanmetrics, otlp/traces]
+      exporters: [otlp, debug, spanmetrics, otlp/traces, opensearch/traces]
     metrics:
       receivers: [otlp, spanmetrics]
       processors: [filter/ottl, transform, batch]
