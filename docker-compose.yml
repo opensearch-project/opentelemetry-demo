@@ -9,12 +9,11 @@ x-default-logging: &logging
     max-file: "2"
 
 volumes:
-  opensearch-data:
+  opensearch-data1:
+  opensearch-data2:
 
 networks:
-  default:
-    name: opentelemetry-demo
-    driver: bridge
+  opensearch-otel-demo:
 
 services:
   # ******************
@@ -46,6 +45,8 @@ services:
       kafka:
         condition: service_healthy
     logging: *logging
+    networks:
+      - opensearch-otel-demo
 
   # AdService
   adservice:
@@ -75,6 +76,8 @@ services:
       otelcol:
         condition: service_started
     logging: *logging
+    networks:
+      - opensearch-otel-demo
 
   # Cart service
   cartservice:
@@ -105,6 +108,8 @@ services:
       otelcol:
         condition: service_started
     logging: *logging
+    networks:
+      - opensearch-otel-demo
 
   # Checkout service
   checkoutservice:
@@ -153,6 +158,8 @@ services:
       kafka:
         condition: service_healthy
     logging: *logging
+    networks:
+      - opensearch-otel-demo
 
   # Currency service
   currencyservice:
@@ -180,6 +187,8 @@ services:
       otelcol:
         condition: service_started
     logging: *logging
+    networks:
+      - opensearch-otel-demo
 
   # Email service
   emailservice:
@@ -206,6 +215,8 @@ services:
       otelcol:
         condition: service_started
     logging: *logging
+    networks:
+      - opensearch-otel-demo
 
   # Feature Flag service
   featureflagservice:
@@ -237,6 +248,8 @@ services:
       ffs_postgres:
         condition: service_healthy
     logging: *logging
+    networks:
+      - opensearch-otel-demo
 
   # Fraud Detection service
   frauddetectionservice:
@@ -264,6 +277,8 @@ services:
       kafka:
         condition: service_healthy
     logging: *logging
+    networks:
+      - opensearch-otel-demo
 
   # Frontend
   frontend:
@@ -318,6 +333,8 @@ services:
       otelcol:
         condition: service_started
     logging: *logging
+    networks:
+      - opensearch-otel-demo
 
   # Load Generator
   loadgenerator:
@@ -350,6 +367,8 @@ services:
       frontend:
         condition: service_started
     logging: *logging
+    networks:
+      - opensearch-otel-demo
 
   # Payment service
   paymentservice:
@@ -377,6 +396,8 @@ services:
       otelcol:
         condition: service_started
     logging: *logging
+    networks:
+      - opensearch-otel-demo
 
   # Product Catalog service
   productcatalogservice:
@@ -405,6 +426,8 @@ services:
       otelcol:
         condition: service_started
     logging: *logging
+    networks:
+      - opensearch-otel-demo
 
   # Quote service
   quoteservice:
@@ -434,6 +457,8 @@ services:
       otelcol:
         condition: service_started
     logging: *logging
+    networks:
+      - opensearch-otel-demo
 
   # Recommendation service
   recommendationservice:
@@ -469,6 +494,8 @@ services:
       otelcol:
         condition: service_started
     logging: *logging
+    networks:
+      - opensearch-otel-demo
 
   # Frontend Nginx Proxy service
   nginx:
@@ -490,6 +517,8 @@ services:
       options:
         fluentd-address: 127.0.0.1:24224
         tag: nginx.access
+    networks:
+      - opensearch-otel-demo
 
   # Fluent-bit logs shipper service
   fluentbit:
@@ -501,7 +530,9 @@ services:
       - "24224:24224"
       - "24224:24224/udp"
     depends_on:
-      - opensearch
+      - opensearch-dashboards
+    networks:
+      - opensearch-otel-demo
 
   # Shipping service
   shippingservice:
@@ -529,6 +560,8 @@ services:
       otelcol:
         condition: service_started
     logging: *logging
+    networks:
+      - opensearch-otel-demo
 
   # ******************
   # Dependent Services
@@ -553,6 +586,8 @@ services:
       timeout: 5s
       retries: 5
     logging: *logging
+    networks:
+      - opensearch-otel-demo
 
   # Kafka used by Checkout, Accounting, and Fraud Detection services
   kafka:
@@ -582,6 +617,8 @@ services:
       timeout: 10s
       retries: 10
     logging: *logging
+    networks:
+      - opensearch-otel-demo
 
   # Redis used by Cart service
   redis-cart:
@@ -596,6 +633,8 @@ services:
     ports:
       - "${REDIS_PORT}"
     logging: *logging
+    networks:
+      - opensearch-otel-demo
 
   # ********************
   # Telemetry Components
@@ -606,7 +645,7 @@ services:
     container_name: jaeger
     command:
       - "--metrics-backend=prometheus"
-      - "--es.server-urls=https://opensearch:9200"
+      - "--es.server-urls=https://opensearch-node1:9200"
       - "--es.tls.enabled=true"
     deploy:
       resources:
@@ -631,7 +670,9 @@ services:
       - ES_TLS_SKIP_HOST_VERIFY=true
     logging: *logging
     depends_on:
-      - opensearch
+      - opensearch-dashboards
+    networks:
+      - opensearch-otel-demo
 
   jaeger-agent:
     image: jaegertracing/jaeger-agent:latest
@@ -649,6 +690,8 @@ services:
       - SPAN_STORAGE_TYPE=opensearch
     depends_on:
       - jaeger
+    networks:
+      - opensearch-otel-demo
 
   # Grafana
   grafana:
@@ -666,10 +709,12 @@ services:
     ports:
       - "${GRAFANA_SERVICE_PORT}:${GRAFANA_SERVICE_PORT}"
     logging: *logging
+    networks:
+      - opensearch-otel-demo
 
   # OpenTelemetry Collector
   otelcol:
-    image: otel/opentelemetry-collector-contrib:0.91.0
+    image: otel/opentelemetry-collector-contrib:0.93.0
     container_name: otel-col
     deploy:
       resources:
@@ -696,6 +741,8 @@ services:
     logging: *logging
     environment:
       - ENVOY_PORT
+    networks:
+      - opensearch-otel-demo
 
   # Prometheus
   prometheus:
@@ -720,16 +767,42 @@ services:
     ports:
       - "${PROMETHEUS_SERVICE_PORT}:${PROMETHEUS_SERVICE_PORT}"
     logging: *logging
+    networks:
+      - opensearch-otel-demo
 
-  # OpenSearch store - engine
-  opensearch:
-    image: opensearchstaging/opensearch:${OPENSEARCH_VERSION}
-    container_name: opensearch
+  opensearch-node1:
+    image: opensearchproject/opensearch:latest
+    container_name: opensearch-node1
     environment:
       - cluster.name=opensearch-cluster
-      - node.name=opensearch
-      - discovery.seed_hosts=opensearch
-      - cluster.initial_cluster_manager_nodes=opensearch
+      - node.name=opensearch-node1
+      - discovery.seed_hosts=opensearch-node1,opensearch-node2
+      - cluster.initial_cluster_manager_nodes=opensearch-node1,opensearch-node2
+      - bootstrap.memory_lock=true # along with the memlock settings below, disables swapping
+      - "OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m" # minimum and maximum Java heap size, recommend setting both to 50% of system RAM
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+      nofile:
+        soft: 65536 # maximum number of open files for the OpenSearch user, set to at least 65536 on modern systems
+        hard: 65536
+    volumes:
+      - opensearch-data1:/usr/share/opensearch/data
+    ports:
+      - 9200:9200
+      - 9600:9600 # required for Performance Analyzer
+    networks:
+      - opensearch-otel-demo
+  
+  opensearch-node2:
+    image: opensearchproject/opensearch:latest
+    container_name: opensearch-node2
+    environment:
+      - cluster.name=opensearch-cluster
+      - node.name=opensearch-node2
+      - discovery.seed_hosts=opensearch-node1,opensearch-node2
+      - cluster.initial_cluster_manager_nodes=opensearch-node1,opensearch-node2
       - bootstrap.memory_lock=true
       - "OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m"
     ulimits:
@@ -737,27 +810,27 @@ services:
         soft: -1
         hard: -1
       nofile:
-        soft: 65536 # Maximum number of open files for the opensearch user - set to at least 65536
+        soft: 65536
         hard: 65536
     volumes:
-      - opensearch-data:/usr/share/opensearch/data # Creates volume called opensearch-data1 and mounts it to the container
+      - opensearch-data2:/usr/share/opensearch/data
+    networks:
+      - opensearch-otel-demo
+
+  opensearch-dashboards:
+    image: opensearchproject/opensearch-dashboards:latest
+    container_name: opensearch-dashboards
     ports:
-      - 9200:9200
-      - 9600:9600
-    logging: *logging
+      - 5601:5601
     expose:
-      - "9200"
-    healthcheck:
-      test:
-        [
-          "CMD",
-          "curl",
-          "-f",
-          "https://localhost:9200/_cluster/health?wait_for_status=yellow",
-        ]
-      interval: 20s
-      timeout: 10s
-      retries: 10
+      - "5601"
+    environment:
+      OPENSEARCH_HOSTS: '["https://opensearch-node1:9200","https://opensearch-node2:9200"]'
+    depends_on: 
+      - opensearch-node1
+      - opensearch-node2
+    networks:
+      - opensearch-otel-demo
 
   # OpenSearch store - dashboard
   data-prepper:
@@ -777,21 +850,9 @@ services:
       - "21892"
     logging: *logging
     depends_on:
-      - opensearch
-
-  # OpenSearch store - dashboard
-  opensearch-dashboards:
-    image: opensearchproject/opensearch-dashboards:${OPENSEARCH_VERSION} # Make sure the version of opensearch-dashboards matches the version of opensearch installed on other nodes
-    container_name: opensearch-dashboards
-    ports:
-      - 5601:5601 # Map host port 5601 to container port 5601
-    expose:
-      - "5601" # Expose port 5601 for web access to OpenSearch Dashboards
-    environment:
-      OPENSEARCH_HOSTS: '["https://opensearch:9200"]' # Define the OpenSearch nodes that OpenSearch Dashboards will query
-    depends_on:
-      - opensearch
-      - prometheus
+      - opensearch-dashboards
+    networks:
+      - opensearch-otel-demo
 
   # *****
   # Tests
@@ -814,6 +875,8 @@ services:
       - NODE_ENV=production
     depends_on:
       - frontend
+    networks:
+      - opensearch-otel-demo
 
   # Integration Tests
   integrationTests:
@@ -845,6 +908,8 @@ services:
       - recommendationservice
       - shippingservice
       - quoteservice
+    networks:
+      - opensearch-otel-demo
 
   # Tracebased Tests
   traceBasedTests:
@@ -902,6 +967,8 @@ services:
         condition: service_started
       frauddetectionservice:
         condition: service_started
+    networks:
+      - opensearch-otel-demo
 
   tracetest-server:
     image: kubeshop/tracetest:v0.14.5
@@ -931,6 +998,8 @@ services:
       interval: 1s
       timeout: 3s
       retries: 60
+    networks:
+      - opensearch-otel-demo
 
   tracetest-postgres:
     image: postgres:16.0
@@ -947,3 +1016,5 @@ services:
       retries: 60
     ports:
       - 5432
+    networks:
+      - opensearch-otel-demo

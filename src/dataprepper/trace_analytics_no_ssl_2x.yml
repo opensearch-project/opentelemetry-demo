@@ -19,7 +19,7 @@ raw-pipeline:
     - otel_traces:
   sink:
     - opensearch:
-        hosts: ["https://opensearch:9200"]
+        hosts: ["https://opensearch-node1:9200"]
         insecure: true
         username: "admin"
         password: "admin"
@@ -33,7 +33,7 @@ service-map-pipeline:
     - service_map:
   sink:
     - opensearch:
-        hosts: ["https://opensearch:9200"]
+        hosts: ["https://opensearch-node1:9200"]
         insecure: true
         username: "admin"
         password: "admin"
@@ -51,7 +51,7 @@ trace-error-metrics-pipeline:
         aggregate_when: "/status_code == 2"
   sink:
     - opensearch:
-        hosts: ["https://opensearch:9200"]
+        hosts: ["https://opensearch-node1:9200"]
         insecure: true
         username: "admin"
         password: "admin"
@@ -73,7 +73,7 @@ trace-high-latency-metrics-pipeline:
         aggregate_when: "/durationInNanos > 1000000000"
   sink:
     - opensearch:
-        hosts: ["https://opensearch:9200"]
+        hosts: ["https://opensearch-node1:9200"]
         insecure: true
         username: "admin"
         password: "admin"
@@ -92,7 +92,7 @@ trace-normal-pipeline:
         aggregate_when: "/status_code != 2 and /durationInNanos <= 1000000000"
   sink:
     - opensearch:
-        hosts: ["https://opensearch:9200"]
+        hosts: ["https://opensearch-node1:9200"]
         insecure: true
         username: "admin"
         password: "admin"
