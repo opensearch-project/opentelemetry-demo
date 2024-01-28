@@ -22,24 +22,35 @@ exporters:
     endpoint: "jaeger:4317"
     tls:
       insecure: true
+      insecure_skip_verify: true
   opensearch/traces:
     http:
-      endpoint: https://opensearch-node1:9200
+      endpoint: https://opensearch-node2:9200
       auth:
         authenticator: basicauth/client
       tls:
-        insecure: true
+        insecure: false
+        insecure_skip_verify: true
+    timeout:
+    retry_on_failure:
+      enabled: true
+      initial_interval: 100000000
+      randomization_factor: 0.5
     dataset: traces
-    namespace: otel
   opensearch/logs:
     http:
-      endpoint: https://opensearch-node1:9200
+      endpoint: https://opensearch-node2:9200
       auth:
         authenticator: basicauth/client
       tls:
-        insecure: true
+        insecure: false
+        insecure_skip_verify: true
+    timeout:
+    retry_on_failure:
+      enabled: true
+      initial_interval: 100000000
+      randomization_factor: 0.5
     dataset: logs
-    namespace: otel
   otlp/traces:
     endpoint: "data-prepper:21890"
     tls:
