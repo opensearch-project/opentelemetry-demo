@@ -28,7 +28,7 @@ exporters:
       auth:
         authenticator: basicauth/client
       tls:
-        insecure: true
+        insecure: false
     dataset: traces
     namespace: otel
   opensearch/logs:
@@ -37,7 +37,7 @@ exporters:
       auth:
         authenticator: basicauth/client
       tls:
-        insecure: true
+        insecure: false
     dataset: logs
     namespace: otel
   otlp/traces:
