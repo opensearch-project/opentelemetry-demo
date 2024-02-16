@@ -771,7 +771,7 @@ services:
       - opensearch-otel-demo
 
   opensearch-node1:
-    image: opensearchproject/opensearch:latest
+    image: opensearchstaging/opensearch:2.12.0.9424
     container_name: opensearch-node1
     environment:
       - cluster.name=opensearch-cluster
@@ -779,10 +779,11 @@ services:
       - discovery.seed_hosts=opensearch-node1,opensearch-node2
       - cluster.initial_cluster_manager_nodes=opensearch-node1,opensearch-node2
       - bootstrap.memory_lock=true # along with the memlock settings below, disables swapping
+      - OPENSEARCH_INITIAL_ADMIN_PASSWORD=my_%New%_passW0rd!@#
       - "OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m" # minimum and maximum Java heap size, recommend setting both to 50% of system RAM
     ulimits:
       memlock:
-        soft: -1
+        soft: -1 
         hard: -1
       nofile:
         soft: 65536 # maximum number of open files for the OpenSearch user, set to at least 65536 on modern systems
@@ -796,7 +797,7 @@ services:
       - opensearch-otel-demo
   
   opensearch-node2:
-    image: opensearchproject/opensearch:latest
+    image: opensearchstaging/opensearch:2.12.0.9424
     container_name: opensearch-node2
     environment:
       - cluster.name=opensearch-cluster
@@ -804,6 +805,7 @@ services:
       - discovery.seed_hosts=opensearch-node1,opensearch-node2
       - cluster.initial_cluster_manager_nodes=opensearch-node1,opensearch-node2
       - bootstrap.memory_lock=true
+      - OPENSEARCH_INITIAL_ADMIN_PASSWORD=my_%New%_passW0rd!@#
       - "OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m"
     ulimits:
       memlock:
@@ -818,7 +820,7 @@ services:
       - opensearch-otel-demo
 
   opensearch-dashboards:
-    image: opensearchproject/opensearch-dashboards:latest
+    image: opensearchstaging/opensearch-dashboards:2.12.0.7301
     container_name: opensearch-dashboards
     ports:
       - 5601:5601
@@ -834,7 +836,7 @@ services:
 
   # OpenSearch store - dashboard
   data-prepper:
-    image: opensearchproject/data-prepper:2.6.1
+    image: opensearchproject/data-prepper:latest
     container_name: dataprepper
     volumes:
       - /data/service-map/
