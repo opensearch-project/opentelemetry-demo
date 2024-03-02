@@ -4,7 +4,7 @@ extensions:
   basicauth/client:
     client_auth:
       username: admin
-      password: my_%New%_passW0rd!@#
+      password: admin
 
 receivers:
   otlp:

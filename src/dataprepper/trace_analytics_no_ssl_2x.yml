@@ -22,7 +22,7 @@ raw-pipeline:
         hosts: ["https://opensearch-node1:9200"]
         insecure: true
         username: "admin"
-        password: "my_%New%_passW0rd!@#"
+        password: "admin"
         index_type: trace-analytics-raw
 service-map-pipeline:
   delay: "100"
@@ -36,7 +36,7 @@ service-map-pipeline:
         hosts: ["https://opensearch-node1:9200"]
         insecure: true
         username: "admin"
-        password: "my_%New%_passW0rd!@#"
+        password: "admin"
         index_type: trace-analytics-service-map
 trace-error-metrics-pipeline:
   source:
@@ -54,7 +54,7 @@ trace-error-metrics-pipeline:
         hosts: ["https://opensearch-node1:9200"]
         insecure: true
         username: "admin"
-        password: "my_%New%_passW0rd!@#"
+        password: "admin"
         index: trace-error-metrics
 trace-high-latency-metrics-pipeline:
   source:
@@ -76,7 +76,7 @@ trace-high-latency-metrics-pipeline:
         hosts: ["https://opensearch-node1:9200"]
         insecure: true
         username: "admin"
-        password: "my_%New%_passW0rd!@#"
+        password: "admin"
         index: trace-high-latency-metrics
 trace-normal-pipeline:
   source:
@@ -95,5 +95,5 @@ trace-normal-pipeline:
         hosts: ["https://opensearch-node1:9200"]
         insecure: true
         username: "admin"
-        password: "my_%New%_passW0rd!@#"
+        password: "admin"
         index: sampled-traces

@@ -23,6 +23,6 @@ scrape_configs:
   scheme: https
   basic_auth:
     username: admin
-    password: my_%New%_passW0rd!@#
+    password: admin
   tls_config:
     insecure_skip_verify: true

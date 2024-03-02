@@ -772,7 +772,7 @@ services:
 
 
   opensearch-node1:
-    image: opensearchstaging/opensearch:2.12.0.9424
+    image: opensearchproject/opensearch:${OPENSEARCH_VERSION}
     container_name: opensearch-node1
     environment:
       - cluster.name=opensearch-cluster
@@ -790,7 +790,7 @@ services:
         soft: 65536 # maximum number of open files for the OpenSearch user, set to at least 65536 on modern systems
         hard: 65536
     volumes:
-      - opensearch-data1:/usr/share/opensearch/data
+      - opensearch-data1:/usr/share/opensearch/data/${OPENSEARCH_VERSION}
     ports:
       - 9200:9200
       - 9600:9600 # required for Performance Analyzer
@@ -798,7 +798,7 @@ services:
       - opensearch-otel-demo
   
   opensearch-node2:
-    image: opensearchstaging/opensearch:2.12.0.9424
+    image: opensearchproject/opensearch:${OPENSEARCH_VERSION}
     container_name: opensearch-node2
     environment:
       - cluster.name=opensearch-cluster
@@ -816,12 +816,12 @@ services:
         soft: 65536
         hard: 65536
     volumes:
-      - opensearch-data2:/usr/share/opensearch/data
+      - opensearch-data2:/usr/share/opensearch/data/${OPENSEARCH_VERSION}
     networks:
       - opensearch-otel-demo
 
   opensearch-dashboards:
-    image: opensearchstaging/opensearch-dashboards:2.12.0.7301
+    image: opensearchproject/opensearch-dashboards:${OPENSEARCH_VERSION}
     container_name: opensearch-dashboards
     ports:
       - 5601:5601
@@ -837,7 +837,7 @@ services:
 
   # OpenSearch store - dashboard
   data-prepper:
-    image: opensearchproject/data-prepper:latest
+    image: opensearchproject/data-prepper:${DATA_PREP_VERSION}
     container_name: dataprepper
     volumes:
       - /data/service-map/

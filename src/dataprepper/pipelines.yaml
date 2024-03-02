@@ -13,7 +13,7 @@ otel-logs-pipeline:
     - opensearch:
         hosts: ["https://opensearch-node1:9200"]
         username: "admin"
-        password: "my_%New%_passW0rd!@#"
+        password: "admin"
         insecure: true
         index_type: custom
         index: otel-events-%{yyyy.MM.dd}
@@ -40,7 +40,7 @@ raw-pipeline:
         hosts: [ "https://opensearch-node1:9200" ]
         insecure: true        
         username: "admin"
-        password: "my_%New%_passW0rd!@#"
+        password: "admin"
         index_type: trace-analytics-raw
 service-map-pipeline:
   delay: "100"
@@ -54,7 +54,7 @@ service-map-pipeline:
         hosts: ["https://opensearch-node1:9200"]
         insecure: true
         username: "admin"
-        password: "my_%New%_passW0rd!@#"
+        password: "admin"
         index_type: trace-analytics-service-map
 otel-metrics-pipeline:
   workers: 8
@@ -77,7 +77,7 @@ otel-metrics-pipeline:
     - opensearch:
         hosts: ["https://opensearch-node1:9200"]
         username: "admin"
-        password: "my_%New%_passW0rd!@#"
+        password: "admin"
         insecure: true
         index_type: custom
         index: otel-metrics-%{yyyy.MM.dd}
