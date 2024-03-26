@@ -17,6 +17,8 @@ receivers:
             - "https://*"
 
 exporters:
+  logging:
+    loglevel: info
   debug:
   otlp:
     endpoint: "jaeger:4317"
@@ -67,7 +69,7 @@ exporters:
       insecure: true
       insecure_skip_verify: true
   otlphttp/prometheus:
-    endpoint: "http://prometheus:9090/api/v1/otlp"
+    endpoint: "http://prometheus:9090/metrics"
     tls:
       insecure: true
 

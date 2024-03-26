@@ -12,7 +12,7 @@ PAYLOAD='{
     "name": "my_prometheus",
     "connector": "prometheus",
     "properties": {
-        "prometheus.uri": "http://localhost:9090"
+        "prometheus.uri": "http://prometheus:9090"
     }
 }'
 
