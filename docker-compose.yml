@@ -11,6 +11,7 @@ x-default-logging: &logging
 volumes:
   opensearch-data1:
   opensearch-data2:
+  prometheus_data:
 
 networks:
   opensearch-otel-demo:
@@ -759,6 +760,7 @@ services:
       - --enable-feature=exemplar-storage
       - --enable-feature=otlp-write-receiver
     volumes:
+      - prometheus_data:/usr/share/prometheus/data
       - ./src/prometheus/prometheus-config.yaml:/etc/prometheus/prometheus-config.yaml
     deploy:
       resources:
@@ -830,8 +832,8 @@ services:
     expose:
       - "5601"
     environment:
-      vis_type_vega.enableExternalUrls: true
       OPENSEARCH_HOSTS: '["https://opensearch-node1:9200","https://opensearch-node2:9200"]'
+      vis_type_vega.enableExternalUrls: true
     depends_on:
       - opensearch-node1
       - opensearch-node2
