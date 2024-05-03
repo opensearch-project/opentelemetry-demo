@@ -61,7 +61,7 @@ services:
     image: fluent/fluent-bit:latest
     volumes:
       - ./src/fluent-bit/fluent-bit-folder-example.conf:/fluent-bit/etc/fluent-bit.conf # Map your custom configuration file
-      - logs:/path/to/your/log/folder # Map the log folder to the container
+      - logs:./test/logs # Map the log folder to the container
     ports:
       - "24224:24224"
       - "24224:24224/udp"
