@@ -2,7 +2,7 @@ version: '3'
 services:
   opensearch-node1:
     image: opensearchproject/opensearch:${OPENSEARCH_VERSION}
-    container_name: opensearch-node1
+    container_name: opensearch-node1-sample1
     environment:
       - cluster.name=opensearch-cluster
       - node.name=opensearch-node1
@@ -26,7 +26,7 @@ services:
       - opensearch-net
   opensearch-node2:
     image: opensearchproject/opensearch:${OPENSEARCH_VERSION}
-    container_name: opensearch-node2
+    container_name: opensearch-node2-sample1
     environment:
       - cluster.name=opensearch-cluster
       - node.name=opensearch-node2
@@ -47,7 +47,7 @@ services:
       - opensearch-net
   opensearch-dashboards:
     image: opensearchproject/opensearch-dashboards:${OPENSEARCH_VERSION}
-    container_name: opensearch-dashboards
+    container_name: opensearch-dashboards-sample1
     ports:
       - 5601:5601
     expose:
@@ -57,7 +57,7 @@ services:
     networks:
       - opensearch-net
   fluentbit:
-    container_name: fluentbit
+    container_name: fluentbit-sample1
     image: fluent/fluent-bit:latest
     volumes:
       - ./src/fluent-bit/fluent-bit-folder-example.conf:/fluent-bit/etc/fluent-bit.conf # Map your custom configuration file
