@@ -35,13 +35,6 @@ Enable Store URLs in session storage for allowing to view and edit Vega based vi
 - Once logged in, go to [Advanced Setting](http://localhost:5601/app/management/opensearch-dashboards/settings)
 ![store-url-in-session.png](img%2Fstore-url-in-session.png)
 
-## Loading the OTEL Schema Manually
-To install the OTEL schema manually using the [Simple Schema for Observability](https://github.com/opensearch-project/opensearch-catalog/tree/main/docs/schema/observability) load the schema creation command 
-- Go to the [Dev Console](http://localhost:5601/app/dev_tools#/console) and import the next [sense file](../assets/sense.json)
-
-![import-dev-console-sense-notebook.png](img%2Fimport-dev-console-sense-notebook.png)
-![dev-tool-schema-notebook.png](img%2Fdev-tool-schema-notebook.png)
-
 
 ## Installing OTEL Services Demo 
 
