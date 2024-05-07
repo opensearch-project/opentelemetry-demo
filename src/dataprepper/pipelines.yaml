@@ -80,5 +80,6 @@ otel-metrics-pipeline:
         password: "my_%New%_passW0rd!@#"
         insecure: true
         index_type: custom
-        index: otel-metrics-%{yyyy.MM.dd}
+        template_file: "templates/ss4o_metrics.json"
+        index: ss4o_metrics-otel-%{yyyy.MM.dd}
         bulk_size: 4
