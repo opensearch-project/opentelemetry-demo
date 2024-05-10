@@ -28,70 +28,92 @@ Once all services are up and running - log-in to the Dashboard and enter the nex
 - http://localhost:5601/
 - OpenSearch Dashboard login
 
-![dashboard-login.png](img%2Fdashboard-login.png)
+![dashboard-login.png](img/dashboard-login.png)
 
 ## Store URLs in session storage
 Enable Store URLs in session storage for allowing to view and edit Vega based visualizations 
 - Once logged in, go to [Advanced Setting](http://localhost:5601/app/management/opensearch-dashboards/settings)
-![store-url-in-session.png](img%2Fstore-url-in-session.png)
+![store-url-in-session.png](img/store-url-in-session.png)
 
 ## Installing OTEL Services Demo 
 
 Install OpenTelemetry Integration - navigate to the Integration sections and select the OTEL-Demo Integration
 - Go to the [available integrations ](http://localhost:5601/app/integrations#/available) dialog
 - Select the [OTEL-Demo Integration](http://localhost:5601/app/integrations#/available/otel-services)  
-![integration-otel-services-selection.png](img%2Fintegration-otel-services-selection.png)
-![integration-otel-services-info.png](img%2Fintegration-otel-services-info.png)
+![integration-otel-services-selection.png](img/integration-otel-services-selection.png)
+![integration-otel-services-info.png](img/integration-otel-services-info.png)
 
 - Run the set-up integration and choose the `otel-*` index name as the integration data source
 
-![integration-otel-services-setup.png](img%2Fintegration-otel-services-setup.png)
+![integration-otel-services-setup.png](img/integration-otel-services-setup.png)
 
  - View all the Generated Dashboards:
 
-![integration-otel-services-dashboards.png](img%2Fintegration-otel-services-dashboards.png)
+![integration-otel-services-dashboards.png](img/integration-otel-services-dashboards.png)
 
 ## Ingestion Rate Dashboard
 This dashboard show the 3 signals ingestion rate as they are shipped via data-prepper into OpenSearch indices
 
-![otel-ingestion-rate-dashboard.png](img%2Fotel-ingestion-rate-dashboard.png)
+![otel-ingestion-rate-dashboard.png](img/otel-ingestion-rate-dashboard.png)
 
 ## Services High Level Dashboards View
 This dashboard show the 3 signals ingestion rate as they are shipped via data-prepper into OpenSearch indices
-![services-general-dashboard.png](img%2Fservices-general-dashboard.png)
+![services-general-dashboard.png](img/services-general-dashboard.png)
 
 ## Single Service Details Dashboards View
 This dashboard show the specific service details including associated high level view of the metrics collected for the service 
-![specific-service-dashboard.png](img%2Fspecific-service-dashboard.png)
+![specific-service-dashboard.png](img/specific-service-dashboard.png)
 
 ## Service Metrics View
 
 ### Service Metrics system projection Dashboards 
 This dashboard show the specific service details in particular the system related metrics collected for the service
 
-![amp-services-system-metrics-details.png](img%2Famp-services-system-metrics-details.png)
+![amp-services-system-metrics-details.png](img/amp-services-system-metrics-details.png)
 
 ### Service Metrics network projection Dashboards 
 This dashboard show the specific service details in particular the network related metrics collected for the service
 
-![amp-services-network-metrics-details.png](img%2Famp-services-network-metrics-details.png)
+![amp-services-network-metrics-details.png](img/amp-services-network-metrics-details.png)
 
+## Trace Analytics
+Traces can also be seen using the following [menu-item](http://localhost:5601/app/observability-traces#/traces)
+![traces-analytics-dialog.png](img/traces-analytics-dialog.png)
+- showing a table of traces with their duration/errors rates
+
+![traces-analytics-dialog-spans.png](img/traces-analytics-dialog-spans.png)
+- showing a specific trace's spans water fall chart
+---
+## Services Analytics
+Services can be also be seen using the following [menu-item](http://localhost:5601/app/observability-traces#/services)
+
+![service-analytics-dialog-list.png](img/service-analytics-dialog-list.png)
+- showing the table of services including their Group /Avg Duration / Errors
+
+![service-analytics-dialog-services_map.png](img/service-analytics-dialog-services_map.png)
+- showing the service map graph with the services relationships
+
+![service-analytics-dialog-trace_group.png](img/service-analytics-dialog-trace_group.png)
+- showing the services trace-group charts according to Avg Duration / Traces-Error rates / Traces Request rates 
+
+
+---
 ## Metrics Analytics
 
 ### Setting Up Prometheus `datasource`
 - First [setup](http://localhost:5601/app/datasources#/new) the Prometheus datasource we wanted to connect with 
-![configure-prometheus-datasource.png](img%2Fconfigure-prometheus-datasource.png)
+![configure-prometheus-datasource.png](img/configure-prometheus-datasource.png)
 
 ### Query Prometheus OTEL metrics
 - [Select the OTEL metrics](http://localhost:5601/app/observability-metrics#/) (Prometheus / OpenSearch) we want to display 
-![metrics-analytics-prometheus.png](img%2Fmetrics-analytics-prometheus.png)
-![metrics-analytics-prometheus-select-metrics.png](img%2Fmetrics-analytics-prometheus-select-metrics.png)
+![metrics-analytics-prometheus.png](img/metrics-analytics-prometheus.png)
+![metrics-analytics-prometheus-select-metrics.png](img/metrics-analytics-prometheus-select-metrics.png)
 
 ### Query OpenSearch OTEL metrics
 - Select the `ss4o_metrics-*-*` based index to view the OTEL metrics stored in OpenSearch:
-![metrics-analytics-opensearch-otel-metrics.png](img%2Fmetrics-analytics-opensearch-otel-metrics.png)
-![metrics-analytics-opensearch-otel-metrics-select-metrics.png](img%2Fmetrics-analytics-opensearch-otel-metrics-select-metrics.png)
+![metrics-analytics-opensearch-otel-metrics.png](img/metrics-analytics-opensearch-otel-metrics.png)
+![metrics-analytics-opensearch-otel-metrics-select-metrics.png](img/metrics-analytics-opensearch-otel-metrics-select-metrics.png)
 
 ## Discover - Log Exploration
 - [Discover](http://localhost:5601/app/data-explorer/discover) the OTEL logs stored inside OpenSearch
-![logs-discovery-otel.png](img%2Flogs-discovery-otel.png)
+![logs-discovery-otel.png](img/logs-discovery-otel.png)
