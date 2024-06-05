@@ -253,7 +253,7 @@
       }
     },
     "aliases" : {
-      "otel-metrics" : {}
+      "otel-metrics-" : {}
     },
     "settings": {
       "index": {

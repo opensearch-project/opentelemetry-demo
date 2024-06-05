@@ -200,7 +200,7 @@
       }
     },
     "aliases" : {
-      "otel-events" : {}
+      "otel-events-" : {}
     }
   },
   "composed_of": [],
