@@ -84,7 +84,7 @@ otel-metrics-pipeline:
         bulk_size: 4
         template_type: index-template
         template_content: >
-          "template": {
+          { "template": {
             "mappings": {
               "_meta": {
                 "version": "1.0.0",
@@ -347,4 +347,4 @@ otel-metrics-pipeline:
                 "refresh_interval": "5s"
               }
             }
-          }
+          }}
