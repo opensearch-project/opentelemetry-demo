@@ -843,6 +843,7 @@ services:
 
   # OpenSearch store - dashboard
   data-prepper:
+    platform: linux/amd64
     image: opensearchproject/data-prepper:${DATA_PREP_VERSION}
     container_name: dataprepper
     volumes:
