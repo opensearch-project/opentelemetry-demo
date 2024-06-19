@@ -293,6 +293,10 @@ otel-metrics-pipeline:
                       "ignore_above": 256,
                       "type": "keyword"
                     },
+                    "serviceName": {
+                      "ignore_above": 256,
+                      "type": "keyword"
+                    },
                     "spanId": {
                       "ignore_above": 256,
                       "type": "keyword"
