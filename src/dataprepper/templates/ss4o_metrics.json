@@ -44,6 +44,9 @@
         }
       ],
       "properties": {
+        "serviceName": {
+          "type": "keyword"
+        },
         "name": {
           "type": "keyword",
           "ignore_above": 256
@@ -290,4 +293,3 @@
     ]
   }
 }
-
