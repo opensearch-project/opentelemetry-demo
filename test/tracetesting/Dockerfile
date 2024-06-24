@@ -6,8 +6,11 @@ FROM alpine
 
 WORKDIR /app
 
+# The build-images workflow action does not set a build-arg so we need to specify a default value here
+ARG TRACETEST_IMAGE_VERSION=v1.3.0
+
 RUN apk --update add bash jq curl
-RUN curl -L https://raw.githubusercontent.com/kubeshop/tracetest/main/install-cli.sh | bash -s -- v0.13.10
+RUN curl -L https://raw.githubusercontent.com/kubeshop/tracetest/main/install-cli.sh | bash -s -- $TRACETEST_IMAGE_VERSION
 
 WORKDIR /app/test/tracetesting
 
