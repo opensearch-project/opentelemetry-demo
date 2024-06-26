@@ -32,7 +32,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 20M
+          memory: 120M
     restart: unless-stopped
     environment:
       - KAFKA_SERVICE_ADDR
@@ -61,7 +61,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 300M
+          memory: 500M
     restart: unless-stopped
     ports:
       - "${AD_SERVICE_PORT}"
@@ -92,7 +92,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 160M
+          memory: 450M
     restart: unless-stopped
     ports:
       - "${CART_SERVICE_PORT}"
@@ -124,7 +124,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 20M
+          memory: 120M
     restart: unless-stopped
     ports:
       - "${CHECKOUT_SERVICE_PORT}"
@@ -176,7 +176,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 20M
+          memory: 250M
     restart: unless-stopped
     ports:
       - "${CURRENCY_SERVICE_PORT}"
@@ -202,7 +202,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 100M
+          memory: 500M
     restart: unless-stopped
     ports:
       - "${EMAIL_SERVICE_PORT}"
@@ -231,7 +231,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 175M
+          memory: 500M
     restart: unless-stopped
     ports:
       - "${FEATURE_FLAG_SERVICE_PORT}:${FEATURE_FLAG_SERVICE_PORT}" # Feature Flag Service UI
@@ -264,7 +264,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 200M
+          memory: 400M
     restart: unless-stopped
     environment:
       - KAFKA_SERVICE_ADDR
@@ -293,7 +293,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 200M
+          memory: 500M
     restart: unless-stopped
     ports:
       - "${FRONTEND_PORT}:${FRONTEND_PORT}"
@@ -349,7 +349,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 120M
+          memory: 500M
     restart: unless-stopped
     ports:
       - "${LOCUST_WEB_PORT}:${LOCUST_WEB_PORT}"
@@ -383,7 +383,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 120M
+          memory: 500M
     restart: unless-stopped
     ports:
       - "${PAYMENT_SERVICE_PORT}"
@@ -412,7 +412,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 20M
+          memory: 250M
     restart: unless-stopped
     ports:
       - "${PRODUCT_CATALOG_SERVICE_PORT}"
@@ -442,7 +442,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 40M
+          memory: 450M
     restart: unless-stopped
     ports:
       - "${QUOTE_SERVICE_PORT}"
@@ -473,7 +473,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 500M               # This is high to enable supporting the recommendationCache feature flag use case
+          memory: 850M               # This is high to enable supporting the recommendationCache feature flag use case
     restart: unless-stopped
     ports:
       - "${RECOMMENDATION_SERVICE_PORT}"
@@ -547,7 +547,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 20M
+          memory: 250M
     restart: unless-stopped
     ports:
       - "${SHIPPING_SERVICE_PORT}"
@@ -575,7 +575,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 120M
+          memory: 500M
     restart: unless-stopped
     environment:
       - POSTGRES_USER=ffs
@@ -602,7 +602,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 500M
+          memory: 1500M
     restart: unless-stopped
     environment:
       - KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://kafka:9092
@@ -629,7 +629,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 20M
+          memory: 250M
     restart: unless-stopped
     ports:
       - "${REDIS_PORT}"
@@ -651,7 +651,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 300M
+          memory: 500M
     restart: unless-stopped
     ports:
       - "${JAEGER_SERVICE_PORT}" # Jaeger UI
@@ -720,7 +720,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 125M
+          memory: 250M
     restart: unless-stopped
     command:
       [
@@ -765,7 +765,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 300M
+          memory: 500M
     ports:
       - "${PROMETHEUS_SERVICE_PORT}:${PROMETHEUS_SERVICE_PORT}"
     logging: *logging
