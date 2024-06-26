@@ -293,7 +293,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 500M
+          memory: 850M
     restart: unless-stopped
     ports:
       - "${FRONTEND_PORT}:${FRONTEND_PORT}"
