@@ -4,15 +4,15 @@ Getting started with the OTEL demo including running the OpenSearch Server and D
 `docker-compose up -d` starts all the services and initiates the load-generator activity for synthetically creating user activity on the demo web store.
 
 The following web-pages can be directly access to review the load generator
- - http://localhost:8089/
+- http://localhost:8089/
 
- - Here the synthetic testing process can be started 
+- Here the synthetic testing process can be started
 
 ![](./img/load-generator.png)
 
 The following web-pages can be directly access to actually simulate store purchase
-- http://localhost:8080/ (front-end) OR  http://localhost:90 (nginx-forntend proxy) 
-- Here the actual shop demo can be used (simulated demo shop ...) 
+- http://localhost:8080/ (front-end) OR  http://localhost:90 (nginx-forntend proxy)
+- Here the actual shop demo can be used (simulated demo shop ...)
 
 ![](./img/demo-app.png)
 
@@ -23,7 +23,7 @@ The following web-pages can be directly access to actually simulate store purcha
 
 Once all services are up and running - log-in to the Dashboard and enter the next credentials
 
-**User: `admin`  | Password:  `my_%New%_passW0rd!@#`** 
+**User: `admin`  | Password:  `my_%New%_passW0rd!@#`**
 
 - http://localhost:5601/
 - OpenSearch Dashboard login
@@ -31,23 +31,23 @@ Once all services are up and running - log-in to the Dashboard and enter the nex
 ![dashboard-login.png](img/dashboard-login.png)
 
 ## Store URLs in session storage
-Enable Store URLs in session storage for allowing to view and edit Vega based visualizations 
+Enable Store URLs in session storage for allowing to view and edit Vega based visualizations
 - Once logged in, go to [Advanced Setting](http://localhost:5601/app/management/opensearch-dashboards/settings)
-![store-url-in-session.png](img/store-url-in-session.png)
+  ![store-url-in-session.png](img/store-url-in-session.png)
 
-## Installing OTEL Services Demo 
+## Installing OTEL Services Demo
 
 Install OpenTelemetry Dashboards workflow - navigate to the [Observability Catalog Release Page](https://github.com/opensearch-project/opensearch-catalog/blob/main/docs/integrations/Release.md) sections and select the [Otel Services Dashboards 1.0.0 Release](https://github.com/opensearch-project/opensearch-catalog/releases/tag/otel_services_dashboard-1.0.0)
 - Go to the Dashboard Management and select `Saved Objects`
 - Select the `Import` Icon and choose the Otel Services Dashboards 1.0.0 Release file
 - In the import Dialog: Check for existing objects, Automatically overwrite conflicts and press the import button
 
-This will load all the OpenTelemetry Services flow dashboards and you can immediately navigate to any of the imported dashboards and monitor the ingested telemetry data. 
+This will load all the OpenTelemetry Services flow dashboards and you can immediately navigate to any of the imported dashboards and monitor the ingested telemetry data.
 >  _For detailed instructions see [here](https://github.com/opensearch-project/opensearch-catalog/releases/tag/otel_services_dashboard-1.0.0)_
 
-![integration-otel-services-setup.png](https://private-user-images.githubusercontent.com/48943349/332955286-d96e9a78-e3de-4cce-ba66-23f7c084778d.png?jwt=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmF3LmdpdGh1YnVzZXJjb250ZW50LmNvbSIsImtleSI6ImtleTUiLCJleHAiOjE3MTkyNjg1MjYsIm5iZiI6MTcxOTI2ODIyNiwicGF0aCI6Ii80ODk0MzM0OS8zMzI5NTUyODYtZDk2ZTlhNzgtZTNkZS00Y2NlLWJhNjYtMjNmN2MwODQ3NzhkLnBuZz9YLUFtei1BbGdvcml0aG09QVdTNC1ITUFDLVNIQTI1NiZYLUFtei1DcmVkZW50aWFsPUFLSUFWQ09EWUxTQTUzUFFLNFpBJTJGMjAyNDA2MjQlMkZ1cy1lYXN0LTElMkZzMyUyRmF3czRfcmVxdWVzdCZYLUFtei1EYXRlPTIwMjQwNjI0VDIyMzAyNlomWC1BbXotRXhwaXJlcz0zMDAmWC1BbXotU2lnbmF0dXJlPWQ0ODUxMTRhNjA4MzcxYzcxYzU0YWQ0NGRmMzBlNzlkZjVhMDE0NjBiNDcwNDQzYTE4MWE5MzYxZGFlMDk4MjYmWC1BbXotU2lnbmVkSGVhZGVycz1ob3N0JmFjdG9yX2lkPTAma2V5X2lkPTAmcmVwb19pZD0wIn0.UZ4zmgpmVKluP_2XHCl3bFa_Ed1yZbeY6WvBSZ7CeXw)
+![integration-otel-services-setup.png](img/dashboard-mng.png)
 
-![integration-otel-services-dashboards.png](https://private-user-images.githubusercontent.com/48943349/332955290-a63ae102-706a-4980-b758-fff7f6b24a94.png?jwt=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmF3LmdpdGh1YnVzZXJjb250ZW50LmNvbSIsImtleSI6ImtleTUiLCJleHAiOjE3MTkyNjg1MjYsIm5iZiI6MTcxOTI2ODIyNiwicGF0aCI6Ii80ODk0MzM0OS8zMzI5NTUyOTAtYTYzYWUxMDItNzA2YS00OTgwLWI3NTgtZmZmN2Y2YjI0YTk0LnBuZz9YLUFtei1BbGdvcml0aG09QVdTNC1ITUFDLVNIQTI1NiZYLUFtei1DcmVkZW50aWFsPUFLSUFWQ09EWUxTQTUzUFFLNFpBJTJGMjAyNDA2MjQlMkZ1cy1lYXN0LTElMkZzMyUyRmF3czRfcmVxdWVzdCZYLUFtei1EYXRlPTIwMjQwNjI0VDIyMzAyNlomWC1BbXotRXhwaXJlcz0zMDAmWC1BbXotU2lnbmF0dXJlPTQwYzc3NGVlZTBkMGRiZWEyMDMzMDdkMjZhMzc1MzM4OTI3MjBiMTEwMzg2Y2JkNDQ4MGViMWY4OWI2ODlmOTEmWC1BbXotU2lnbmVkSGVhZGVycz1ob3N0JmFjdG9yX2lkPTAma2V5X2lkPTAmcmVwb19pZD0wIn0.ki-hE26CMKTXfVETpPJgNJqb1OvrWqr9Xd0dDAhiaXU)
+![integration-otel-services-dashboards.png](img/import-savedObj.png)
 
 
 ## Ingestion Rate Dashboard
@@ -60,17 +60,17 @@ This dashboard show the 3 signals ingestion rate as they are shipped via data-pr
 ![services-general-dashboard.png](img/services-general-dashboard.png)
 
 ## Single Service Details Dashboards View
-This dashboard show the specific service details including associated high level view of the metrics collected for the service 
+This dashboard show the specific service details including associated high level view of the metrics collected for the service
 ![specific-service-dashboard.png](img/specific-service-dashboard.png)
 
 ## Service Metrics View
 
-### Service Metrics system projection Dashboards 
+### Service Metrics system projection Dashboards
 This dashboard show the specific service details in particular the system related metrics collected for the service
 
 ![amp-services-system-metrics-details.png](img/amp-services-system-metrics-details.png)
 
-### Service Metrics network projection Dashboards 
+### Service Metrics network projection Dashboards
 This dashboard show the specific service details in particular the network related metrics collected for the service
 
 ![amp-services-network-metrics-details.png](img/amp-services-network-metrics-details.png)
@@ -93,26 +93,26 @@ Services can be also be seen using the following [menu-item](http://localhost:56
 - showing the service map graph with the services relationships
 
 ![service-analytics-dialog-trace_group.png](img/service-analytics-dialog-trace_group.png)
-- showing the services trace-group charts according to Avg Duration / Traces-Error rates / Traces Request rates 
+- showing the services trace-group charts according to Avg Duration / Traces-Error rates / Traces Request rates
 
 
 ---
 ## Metrics Analytics
 
 ### Setting Up Prometheus `datasource`
-- First [setup](http://localhost:5601/app/datasources#/new) the Prometheus datasource we wanted to connect with 
-![configure-prometheus-datasource.png](img/configure-prometheus-datasource.png)
+- First [setup](http://localhost:5601/app/datasources#/new) the Prometheus datasource we wanted to connect with
+  ![configure-prometheus-datasource.png](img/configure-prometheus-datasource.png)
 
 ### Query Prometheus OTEL metrics
-- [Select the OTEL metrics](http://localhost:5601/app/observability-metrics#/) (Prometheus / OpenSearch) we want to display 
-![metrics-analytics-prometheus.png](img/metrics-analytics-prometheus.png)
-![metrics-analytics-prometheus-select-metrics.png](img/metrics-analytics-prometheus-select-metrics.png)
+- [Select the OTEL metrics](http://localhost:5601/app/observability-metrics#/) (Prometheus / OpenSearch) we want to display
+  ![metrics-analytics-prometheus.png](img/metrics-analytics-prometheus.png)
+  ![metrics-analytics-prometheus-select-metrics.png](img/metrics-analytics-prometheus-select-metrics.png)
 
 ### Query OpenSearch OTEL metrics
 - Select the `ss4o_metrics-*-*` based index to view the OTEL metrics stored in OpenSearch:
-![metrics-analytics-opensearch-otel-metrics.png](img/metrics-analytics-opensearch-otel-metrics.png)
-![metrics-analytics-opensearch-otel-metrics-select-metrics.png](img/metrics-analytics-opensearch-otel-metrics-select-metrics.png)
+  ![metrics-analytics-opensearch-otel-metrics.png](img/metrics-analytics-opensearch-otel-metrics.png)
+  ![metrics-analytics-opensearch-otel-metrics-select-metrics.png](img/metrics-analytics-opensearch-otel-metrics-select-metrics.png)
 
 ## Discover - Log Exploration
 - [Discover](http://localhost:5601/app/data-explorer/discover) the OTEL logs stored inside OpenSearch
-![logs-discovery-otel.png](img/logs-discovery-otel.png)
+  ![logs-discovery-otel.png](img/logs-discovery-otel.png)
