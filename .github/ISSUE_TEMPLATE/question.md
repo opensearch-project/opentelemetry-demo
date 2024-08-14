@@ -6,4 +6,4 @@ labels: question
 
 # Question
 
-Use [Github Discussions](https://github.com/open-telemetry/opentelemetry-demo/discussions/).
+Use [Github Discussions](https://github.com/opensearch-project/opentelemetry-demo/discussions/).
