@@ -48,7 +48,7 @@ Happy Learning!
 
 #### 1. [OTEL Demo Architecture](OTEL Demo Architecture.md) 
 
-#### 2. [Observability Introduction](Observability Introduction.md) 
+#### 2. [Observability Introduction](Observability-Introduction) 
 
 #### 3. [Memory Leak Investigation Tutorial](Memory Leak Tutorial.md) 
 
