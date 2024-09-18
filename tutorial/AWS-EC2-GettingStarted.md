@@ -5,7 +5,7 @@ This Getting started tutorial will help you install a live OpenTelemetry Demo on
 ### Additional Resources
  - [DemoLandingPage.md](DemoLandingPage.md)
  - [GettingStarted.md](GettingStarted.md)
-- [Observability Introduction.md](Observability-Introduction)
+- [Observability Introduction.md](Observability-Introduction.md)
 
 ## Intro
 The OpenTelemetry Demo is a microservice distributed system intended to illustrate the implementation of OpenTelemetry in a near real-world environment.
