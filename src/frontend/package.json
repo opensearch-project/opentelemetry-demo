@@ -11,7 +11,7 @@
     "grpc:generate": "mkdir -p ./protos && protoc -I ./pb  --plugin=./node_modules/.bin/protoc-gen-ts_proto --ts_proto_opt=esModuleInterop=true --ts_proto_out=./protos --ts_proto_opt=outputServices=grpc-js demo.proto"
   },
   "dependencies": {
-    "@grpc/grpc-js": "1.9.9",
+    "@grpc/grpc-js": "1.9.15",
     "@opentelemetry/api": "1.6.0",
     "@opentelemetry/auto-instrumentations-node": "0.39.4",
     "@opentelemetry/auto-instrumentations-web": "0.33.2",
@@ -41,7 +41,7 @@
     "react-dom": "18.2.0",
     "sharp": "0.32.6",
     "styled-components": "6.1.0",
-    "ts-proto": "1.163.0",
+    "ts-proto": "1.164.0",
     "uuid": "9.0.1"
   },
   "devDependencies": {
