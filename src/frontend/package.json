@@ -17,7 +17,7 @@
     "@opentelemetry/auto-instrumentations-web": "0.33.2",
     "@opentelemetry/context-zone": "1.17.1",
     "@opentelemetry/core": "1.17.1",
-    "@opentelemetry/exporter-metrics-otlp-grpc": "0.44.0",
+    "@opentelemetry/exporter-metrics-otlp-grpc": "0.45.0",
     "@opentelemetry/exporter-trace-otlp-grpc": "0.44.0",
     "@opentelemetry/exporter-trace-otlp-http": "0.44.0",
     "@opentelemetry/instrumentation": "0.44.0",
