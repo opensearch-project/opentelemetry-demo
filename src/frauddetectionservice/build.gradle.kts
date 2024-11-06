@@ -15,7 +15,7 @@ group = "io.opentelemetry"
 version = "1.0"
 
 
-val grpcVersion = "1.60.0"
+val grpcVersion = "1.67.1"
 val protobufVersion = "3.25.5"
 
 
