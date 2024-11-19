@@ -15,6 +15,12 @@ receivers:
           allowed_origins:
             - "http://*"
             - "https://*"
+  httpcheck/frontendproxy:
+    targets:
+      - endpoint: http://frontendproxy:${env:ENVOY_PORT}
+  redis:
+    endpoint: "redis-cart:6379"
+    collection_interval: 10s
 
 exporters:
   logging:
@@ -24,7 +30,14 @@ exporters:
     endpoint: "jaeger:4317"
     tls:
       insecure: true
-      insecure_skip_verify: true
+  otlp/logs:
+    endpoint: "dataprepper:21892"
+    tls:
+      insecure: true
+  otlphttp/prometheus:
+    endpoint: "http://prometheus:9090/api/v1/otlp"
+    tls:
+      insecure: true
   opensearch/traces:
     http:
       endpoint: https://opensearch-node2:9200
@@ -63,15 +76,6 @@ exporters:
     tls:
       insecure: true
       insecure_skip_verify: true
-  otlp/logs:
-    endpoint: "data-prepper:21892"
-    tls:
-      insecure: true
-      insecure_skip_verify: true
-  otlphttp/prometheus:
-    endpoint: "http://prometheus:9090/metrics"
-    tls:
-      insecure: true
 
 processors:
   batch:
@@ -102,10 +106,10 @@ service:
       processors: [batch]
       exporters: [otlp, debug, spanmetrics, otlp/traces, opensearch/traces]
     metrics:
-      receivers: [otlp, spanmetrics]
-      processors: [filter/ottl, transform, batch]
+      receivers: [httpcheck/frontendproxy, redis, otlp, spanmetrics]
+      processors: [batch]
       exporters: [otlphttp/prometheus, otlp/metrics, debug]
     logs:
       receivers: [otlp]
       processors: [batch]
-      exporters: [otlp/logs,  opensearch/logs, debug]
+      exporters: [otlp/logs, opensearch/logs, debug]
