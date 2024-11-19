@@ -69,7 +69,7 @@ exporters:
       insecure: true
       insecure_skip_verify: true
   otlphttp/prometheus:
-    endpoint: "http://prometheus:9090/metrics"
+    endpoint: "http://prometheus:9090/api/v1/otlp"
     tls:
       insecure: true
 
@@ -108,4 +108,4 @@ service:
     logs:
       receivers: [otlp]
       processors: [batch]
-      exporters: [otlp/logs,  opensearch/logs, debug]
+      exporters: [otlp/logs, opensearch/logs, debug]
