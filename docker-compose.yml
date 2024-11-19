@@ -799,7 +799,7 @@ services:
       - 9600:9600 # required for Performance Analyzer
 
   opensearch-node2:
-    image:  ${OPENSEARCH_IMAGE}
+    image: ${OPENSEARCH_IMAGE}
     container_name: opensearch-node2
     environment:
       - cluster.name=opensearch-cluster
