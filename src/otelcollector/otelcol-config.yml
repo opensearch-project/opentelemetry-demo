@@ -30,14 +30,6 @@ exporters:
     endpoint: "jaeger:4317"
     tls:
       insecure: true
-  otlp/logs:
-    endpoint: "dataprepper:21892"
-    tls:
-      insecure: true
-  otlphttp/prometheus:
-    endpoint: "http://prometheus:9090/api/v1/otlp"
-    tls:
-      insecure: true
   opensearch/traces:
     http:
       endpoint: https://opensearch-node2:9200
