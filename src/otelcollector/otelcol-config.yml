@@ -15,6 +15,12 @@ receivers:
           allowed_origins:
             - "http://*"
             - "https://*"
+  httpcheck/frontendproxy:
+    targets:
+      - endpoint: http://frontendproxy:${env:ENVOY_PORT}
+  redis:
+    endpoint: "redis-cart:6379"
+    collection_interval: 10s
 
 exporters:
   logging:
@@ -24,7 +30,6 @@ exporters:
     endpoint: "jaeger:4317"
     tls:
       insecure: true
-      insecure_skip_verify: true
   opensearch/traces:
     http:
       endpoint: https://opensearch-node2:9200
@@ -102,8 +107,8 @@ service:
       processors: [batch]
       exporters: [otlp, debug, spanmetrics, otlp/traces, opensearch/traces]
     metrics:
-      receivers: [otlp, spanmetrics]
-      processors: [filter/ottl, transform, batch]
+      receivers: [httpcheck/frontendproxy, redis, otlp, spanmetrics]
+      processors: [batch]
       exporters: [otlphttp/prometheus, otlp/metrics, debug]
     logs:
       receivers: [otlp]
