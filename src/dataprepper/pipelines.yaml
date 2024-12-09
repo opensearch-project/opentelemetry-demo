@@ -16,7 +16,7 @@ otel-logs-pipeline:
         password: "my_%New%_passW0rd!@#"
         insecure: true
         index_type: custom
-        index: otel-events-%{yyyy.MM.dd}
+        index: ss4o_logs-%{yyyy.MM.dd}
         bulk_size: 4
 
 entry-pipeline:
@@ -37,8 +37,8 @@ raw-pipeline:
     - otel_trace_raw:
   sink:
     - opensearch:
-        hosts: [ "https://opensearch-node1:9200" ]
-        insecure: true        
+        hosts: ["https://opensearch-node1:9200"]
+        insecure: true
         username: "admin"
         password: "my_%New%_passW0rd!@#"
         index_type: trace-analytics-raw
