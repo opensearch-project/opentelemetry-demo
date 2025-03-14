@@ -13,6 +13,9 @@ networks:
     name: opentelemetry-demo
     driver: bridge
 
+volumes:
+  opensearch-data1:
+  prometheus_data:
 services:
   # ******************
   # Core Demo Services
@@ -188,7 +191,7 @@ services:
       - CURRENCY_PORT
       - VERSION=${IMAGE_VERSION}
       - OTEL_EXPORTER_OTLP_ENDPOINT
-      - OTEL_RESOURCE_ATTRIBUTES=${OTEL_RESOURCE_ATTRIBUTES},service.name=currency   # The C++ SDK does not support OTEL_SERVICE_NAME
+      - OTEL_RESOURCE_ATTRIBUTES=${OTEL_RESOURCE_ATTRIBUTES},service.name=currency # The C++ SDK does not support OTEL_SERVICE_NAME
     depends_on:
       otel-collector:
         condition: service_started
@@ -534,7 +537,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 500M               # This is high to enable supporting the recommendationCache feature flag use case
+          memory: 500M # This is high to enable supporting the recommendationCache feature flag use case
     restart: unless-stopped
     ports:
       - "${RECOMMENDATION_PORT}"
@@ -602,18 +605,13 @@ services:
       - FLAGD_METRICS_EXPORTER=otel
       - OTEL_RESOURCE_ATTRIBUTES
       - OTEL_SERVICE_NAME=flagd
-    command: [
-      "start",
-      "--uri",
-      "file:./etc/flagd/demo.flagd.json"
-    ]
+    command: ["start", "--uri", "file:./etc/flagd/demo.flagd.json"]
     ports:
       - "${FLAGD_PORT}"
       - "${FLAGD_OFREP_PORT}"
     volumes:
       - ./src/flagd:/etc/flagd
-    logging:
-      *logging
+    logging: *logging
 
   # Flagd UI for configuring the feature flag service
   flagd-ui:
@@ -689,7 +687,6 @@ services:
       - "${VALKEY_PORT}"
     logging: *logging
 
-
   # ********************
   # Telemetry Components
   # ********************
@@ -703,16 +700,26 @@ services:
       - "--prometheus.server-url=http://${PROMETHEUS_ADDR}"
       - "--prometheus.query.normalize-calls=true"
       - "--prometheus.query.normalize-duration=true"
+      - "--es.server-urls=https://opensearch:9200"
+      - "--es.tls.enabled=true"
     deploy:
       resources:
         limits:
           memory: 1200M
     restart: unless-stopped
     ports:
-      - "${JAEGER_PORT}"         # Jaeger UI
+      - "${JAEGER_PORT}" # Jaeger UI
       - "${OTEL_COLLECTOR_PORT_GRPC}"
     environment:
       - METRICS_STORAGE_TYPE=prometheus
+      - COLLECTOR_OTLP_ENABLED=true
+      - SPAN_STORAGE_TYPE=opensearch
+      - ES_TAGS_AS_FIELDS_ALL=true
+      - ES_USERNAME=${OPENSEARCH_USER}
+      - ES_PASSWORD=${OPENSEARCH_PASSWORD}
+      - ES_TLS_SKIP_HOST_VERIFY=true
+    depends_on:
+      - opensearch-dashboards
     logging: *logging
 
   # Grafana
@@ -742,7 +749,11 @@ services:
         limits:
           memory: 200M
     restart: unless-stopped
-    command: [ "--config=/etc/otelcol-config.yml", "--config=/etc/otelcol-config-extras.yml" ]
+    command:
+      [
+        "--config=/etc/otelcol-config.yml",
+        "--config=/etc/otelcol-config-extras.yml",
+      ]
     user: 0:0
     volumes:
       - ${HOST_FILESYSTEM}:/hostfs:ro
@@ -781,6 +792,7 @@ services:
       - --web.enable-otlp-receiver
       - --enable-feature=exemplar-storage
     volumes:
+      - prometheus_data:/usr/share/prometheus/data
       - ./src/prometheus/prometheus-config.yaml:/etc/prometheus/prometheus-config.yaml
     deploy:
       resources:
@@ -805,11 +817,11 @@ services:
       - node.name=demo-node
       - bootstrap.memory_lock=true
       - discovery.type=single-node
-      - OPENSEARCH_JAVA_OPTS=-Xms300m -Xmx300m
-      - DISABLE_INSTALL_DEMO_CONFIG=true
-      - DISABLE_SECURITY_PLUGIN=true
+      - OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m
       # Workaround on OSX for https://bugs.openjdk.org/browse/JDK-8345296
       - _JAVA_OPTIONS
+      - plugins.query.datasources.encryption.masterkey=8e3f206ea7c07cc1bfc5cf40
+      - "OPENSEARCH_INITIAL_ADMIN_PASSWORD=${OPENSEARCH_PASSWORD}"
     ulimits:
       memlock:
         soft: -1
@@ -817,12 +829,51 @@ services:
       nofile:
         soft: 65536
         hard: 65536
+    volumes:
+      - opensearch-data1:/usr/share/opensearch/data/${OPENSEARCH_VERSION}
     ports:
-      - "9200"
+      - ${OPENSEARCH_PORT}:${OPENSEARCH_PORT}
+      - "9600"
     healthcheck:
-      test: curl -s http://localhost:9200/_cluster/health | grep -E '"status":"(green|yellow)"'
+      test: curl -s https://localhost:9200/_cluster/health -u '${OPENSEARCH_USER}':'${OPENSEARCH_PASSWORD}' -k | grep -E '"status":"(green|yellow)"'
       start_period: 10s
       interval: 5s
       timeout: 10s
       retries: 10
     logging: *logging
+
+  #################################################################################################
+  # OpenSearch OTel Demo specifics
+  #################################################################################################
+
+  # OpenSearch Dashboards
+  opensearch-dashboards:
+    image: ${OPENSEARCH_DASHBOARDS_IMAGE}
+    container_name: opensearch-dashboards
+    ports:
+      - ${OPENSEARCH_DASHBOARD_PORT}:${OPENSEARCH_DASHBOARD_PORT}
+    environment:
+      - 'OPENSEARCH_HOSTS=["https://opensearch:9200"]'
+    depends_on:
+      - opensearch
+    volumes:
+      - ./src/dashboards/config/opensearch_dashboards.yml:/usr/share/opensearch-dashboards/config/opensearch_dashboards.yml
+
+  # OpenSearch Ingestion - Data prepper
+  data-prepper:
+    platform: linux/amd64
+    image: ${DATA_PREPPER_IMAGE}
+    container_name: dataprepper
+    volumes:
+      - /data/service-map/
+      - ./src/dataprepper/templates/ss4o_metrics.json:/usr/share/data-prepper/templates/ss4o_metrics.json
+      - ./src/dataprepper/templates/ss4o_logs.json:/usr/share/data-prepper/templates/ss4o_logs.json
+      - ./src/dataprepper/templates/ss4o_traces.json:/usr/share/data-prepper/templates/ss4o_traces.json
+      - ./src/dataprepper/pipelines.yaml:/usr/share/data-prepper/pipelines/pipelines.yaml
+      - ./src/dataprepper/data-prepper-config.yaml:/usr/share/data-prepper/config/data-prepper-config.yaml
+    ports:
+      - "21890"
+      - "21892"
+    logging: *logging
+    depends_on:
+      - opensearch-dashboards

@@ -1,0 +1,58 @@
+# Copyright The OpenTelemetry Authors
+# SPDX-License-Identifier: Apache-2.0
+
+otel-logs-pipeline:
+  workers: 5
+  delay: 10
+  source:
+    otel_logs_source:
+      ssl: false
+  buffer:
+    bounded_blocking:
+  sink:
+    - opensearch:
+        hosts: ["https://opensearch:9200"]
+        username: "admin"
+        password: "my_%New%_passW0rd!@#"
+        insecure: true
+        index_type: custom
+        index: ss4o_logs-%{yyyy.MM.dd}
+        bulk_size: 4
+
+entry-pipeline:
+  delay: "100"
+  source:
+    otel_trace_source:
+      ssl: false
+  sink:
+    - pipeline:
+        name: "raw-pipeline"
+    - pipeline:
+        name: "service-map-pipeline"
+raw-pipeline:
+  source:
+    pipeline:
+      name: "entry-pipeline"
+  processor:
+    - otel_trace_raw:
+  sink:
+    - opensearch:
+        hosts: ["https://opensearch:9200"]
+        insecure: true
+        username: "admin"
+        password: "my_%New%_passW0rd!@#"
+        index_type: trace-analytics-raw
+service-map-pipeline:
+  delay: "100"
+  source:
+    pipeline:
+      name: "entry-pipeline"
+  processor:
+    - service_map_stateful:
+  sink:
+    - opensearch:
+        hosts: ["https://opensearch:9200"]
+        insecure: true
+        username: "admin"
+        password: "my_%New%_passW0rd!@#"
+        index_type: trace-analytics-service-map
