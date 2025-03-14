@@ -690,17 +690,15 @@ services:
   # ********************
   # Telemetry Components
   # ********************
-  # Jaeger
   jaeger:
     image: ${JAEGERTRACING_IMAGE}
     container_name: jaeger
     command:
-      - "--memory.max-traces=25000"
       - "--query.base-path=/jaeger/ui"
       - "--prometheus.server-url=http://${PROMETHEUS_ADDR}"
       - "--prometheus.query.normalize-calls=true"
       - "--prometheus.query.normalize-duration=true"
-      - "--es.server-urls=https://opensearch:9200"
+      - "--es.server-urls=https://${OPENSEARCH_HOST}:${OPENSEARCH_PORT}"
       - "--es.tls.enabled=true"
     deploy:
       resources:
@@ -711,6 +709,8 @@ services:
       - "${JAEGER_PORT}" # Jaeger UI
       - "${OTEL_COLLECTOR_PORT_GRPC}"
     environment:
+      - OPENSEARCH_HOST=${OPENSEARCH_HOST}
+      - OPENSEARCH_PORT=${OPENSEARCH_PORT}
       - METRICS_STORAGE_TYPE=prometheus
       - COLLECTOR_OTLP_ENABLED=true
       - SPAN_STORAGE_TYPE=opensearch
@@ -835,11 +835,11 @@ services:
       - ${OPENSEARCH_PORT}:${OPENSEARCH_PORT}
       - "9600"
     healthcheck:
-      test: curl -s https://localhost:9200/_cluster/health -u '${OPENSEARCH_USER}':'${OPENSEARCH_PASSWORD}' -k | grep -E '"status":"(green|yellow)"'
-      start_period: 10s
+      test: curl -s https://localhost:${OPENSEARCH_PORT}/_cluster/health -u '${OPENSEARCH_USER}':'${OPENSEARCH_PASSWORD}' -k | grep -E '"status":"(green|yellow)"'
+      start_period: 30s # takes a bit longer to boot with security
       interval: 5s
       timeout: 10s
-      retries: 10
+      retries: 30
     logging: *logging
 
   #################################################################################################
@@ -853,7 +853,10 @@ services:
     ports:
       - ${OPENSEARCH_DASHBOARD_PORT}:${OPENSEARCH_DASHBOARD_PORT}
     environment:
-      - 'OPENSEARCH_HOSTS=["https://opensearch:9200"]'
+      - OPENSEARCH_HOSTS=${OPENSEARCH_HOSTS}
+      - OPENSEARCH_DASHBOARD_PORT=${OPENSEARCH_DASHBOARD_PORT}
+      - OPENSEARCH_USER=${OPENSEARCH_USER}
+      - OPENSEARCH_PASSWORD=${OPENSEARCH_PASSWORD}
     depends_on:
       - opensearch
     volumes:
@@ -864,16 +867,29 @@ services:
     platform: linux/amd64
     image: ${DATA_PREPPER_IMAGE}
     container_name: dataprepper
+    environment:
+      - OPENSEARCH_HOSTS=${OPENSEARCH_HOSTS}
+      - OPENSEARCH_USER=${OPENSEARCH_USER}
+      - OPENSEARCH_PASSWORD=${OPENSEARCH_PASSWORD}
     volumes:
       - /data/service-map/
       - ./src/dataprepper/templates/ss4o_metrics.json:/usr/share/data-prepper/templates/ss4o_metrics.json
       - ./src/dataprepper/templates/ss4o_logs.json:/usr/share/data-prepper/templates/ss4o_logs.json
       - ./src/dataprepper/templates/ss4o_traces.json:/usr/share/data-prepper/templates/ss4o_traces.json
-      - ./src/dataprepper/pipelines.yaml:/usr/share/data-prepper/pipelines/pipelines.yaml
+      - ./src/dataprepper/pipelines.template.yaml:/tmp/pipelines.template.yaml
       - ./src/dataprepper/data-prepper-config.yaml:/usr/share/data-prepper/config/data-prepper-config.yaml
+    command: >
+      /bin/bash -c "
+      cp /tmp/pipelines.template.yaml /tmp/pipelines.yaml &&
+      chmod +w /tmp/pipelines.yaml &&
+      sed -i 's|OPENSEARCH_HOSTS|${OPENSEARCH_HOSTS}|g' /tmp/pipelines.yaml &&
+      sed -i 's|OPENSEARCH_USER|${OPENSEARCH_USER}|g' /tmp/pipelines.yaml &&
+      sed -i 's|OPENSEARCH_PASSWORD|${OPENSEARCH_PASSWORD}|g' /tmp/pipelines.yaml &&
+      mv /tmp/pipelines.yaml /usr/share/data-prepper/pipelines/pipelines.yaml &&
+      exec /usr/share/data-prepper/bin/data-prepper"
     ports:
-      - "21890"
-      - "21892"
+      - ${DP_OTEL_TRACE_SOURCE_PORT}
+      - ${DP_OTEL_LOGS_SOURCE_PORT}
     logging: *logging
     depends_on:
       - opensearch-dashboards

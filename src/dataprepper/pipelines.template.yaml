@@ -11,9 +11,9 @@ otel-logs-pipeline:
     bounded_blocking:
   sink:
     - opensearch:
-        hosts: ["https://opensearch:9200"]
-        username: "admin"
-        password: "my_%New%_passW0rd!@#"
+        hosts: OPENSEARCH_HOSTS
+        username: OPENSEARCH_USER
+        password: OPENSEARCH_PASSWORD
         insecure: true
         index_type: custom
         index: ss4o_logs-%{yyyy.MM.dd}
@@ -37,11 +37,12 @@ raw-pipeline:
     - otel_trace_raw:
   sink:
     - opensearch:
-        hosts: ["https://opensearch:9200"]
+        hosts: OPENSEARCH_HOSTS
+        username: OPENSEARCH_USER
+        password: OPENSEARCH_PASSWORD
         insecure: true
-        username: "admin"
-        password: "my_%New%_passW0rd!@#"
         index_type: trace-analytics-raw
+
 service-map-pipeline:
   delay: "100"
   source:
@@ -51,8 +52,8 @@ service-map-pipeline:
     - service_map_stateful:
   sink:
     - opensearch:
-        hosts: ["https://opensearch:9200"]
+        hosts: OPENSEARCH_HOSTS
+        username: OPENSEARCH_USER
+        password: OPENSEARCH_PASSWORD
         insecure: true
-        username: "admin"
-        password: "my_%New%_passW0rd!@#"
         index_type: trace-analytics-service-map
