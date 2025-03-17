@@ -1,3 +1,6 @@
+# Copyright OpenSearch Contributors
+# SPDX-License-Identifier: Apache-2.0
+
 # Copyright The OpenTelemetry Authors
 # SPDX-License-Identifier: Apache-2.0
 
@@ -892,4 +895,7 @@ services:
       - ${DP_OTEL_LOGS_SOURCE_PORT}
     logging: *logging
     depends_on:
-      - opensearch-dashboards
+      opensearch:
+        condition: service_healthy
+      opensearch-dashboards:
+        condition: service_started
