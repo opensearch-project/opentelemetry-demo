@@ -47,6 +47,8 @@ docker compose up -d
 
 2. Use PPL/SQL/DQL/Lucene to explorer your logs in OpenSearch Dashboards with discover
 
+![services view](./images/service_logs.png)
+
 ## Welcome to the OpenTelemetry Astronomy Shop Demo
 
 This repository contains the OpenTelemetry Astronomy Shop, a microservice-based
