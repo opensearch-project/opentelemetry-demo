@@ -37,6 +37,8 @@
       "# SPDX-License-Identifier: Apache-2.0"
     ],
     "ignore": [
+        "src/dataprepper/",
+        "src/dashboards/",
         "node_modules/",
         "/src/accounting/src/protos/",
         "src/cart/src/obj/",

@@ -1,3 +1,6 @@
+# Copyright OpenSearch Contributors
+# SPDX-License-Identifier: Apache-2.0
+
 # Copyright The OpenTelemetry Authors
 # SPDX-License-Identifier: Apache-2.0
 
@@ -13,6 +16,9 @@ networks:
     name: opentelemetry-demo
     driver: bridge
 
+volumes:
+  opensearch-data1:
+  prometheus_data:
 services:
   # ******************
   # Core Demo Services
@@ -188,7 +194,7 @@ services:
       - CURRENCY_PORT
       - VERSION=${IMAGE_VERSION}
       - OTEL_EXPORTER_OTLP_ENDPOINT
-      - OTEL_RESOURCE_ATTRIBUTES=${OTEL_RESOURCE_ATTRIBUTES},service.name=currency   # The C++ SDK does not support OTEL_SERVICE_NAME
+      - OTEL_RESOURCE_ATTRIBUTES=${OTEL_RESOURCE_ATTRIBUTES},service.name=currency # The C++ SDK does not support OTEL_SERVICE_NAME
     depends_on:
       otel-collector:
         condition: service_started
@@ -534,7 +540,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 500M               # This is high to enable supporting the recommendationCache feature flag use case
+          memory: 500M # This is high to enable supporting the recommendationCache feature flag use case
     restart: unless-stopped
     ports:
       - "${RECOMMENDATION_PORT}"
@@ -602,18 +608,13 @@ services:
       - FLAGD_METRICS_EXPORTER=otel
       - OTEL_RESOURCE_ATTRIBUTES
       - OTEL_SERVICE_NAME=flagd
-    command: [
-      "start",
-      "--uri",
-      "file:./etc/flagd/demo.flagd.json"
-    ]
+    command: ["start", "--uri", "file:./etc/flagd/demo.flagd.json"]
     ports:
       - "${FLAGD_PORT}"
       - "${FLAGD_OFREP_PORT}"
     volumes:
       - ./src/flagd:/etc/flagd
-    logging:
-      *logging
+    logging: *logging
 
   # Flagd UI for configuring the feature flag service
   flagd-ui:
@@ -689,30 +690,39 @@ services:
       - "${VALKEY_PORT}"
     logging: *logging
 
-
   # ********************
   # Telemetry Components
   # ********************
-  # Jaeger
   jaeger:
     image: ${JAEGERTRACING_IMAGE}
     container_name: jaeger
     command:
-      - "--memory.max-traces=25000"
       - "--query.base-path=/jaeger/ui"
       - "--prometheus.server-url=http://${PROMETHEUS_ADDR}"
       - "--prometheus.query.normalize-calls=true"
       - "--prometheus.query.normalize-duration=true"
+      - "--es.server-urls=https://${OPENSEARCH_HOST}:${OPENSEARCH_PORT}"
+      - "--es.tls.enabled=true"
     deploy:
       resources:
         limits:
           memory: 1200M
     restart: unless-stopped
     ports:
-      - "${JAEGER_PORT}"         # Jaeger UI
+      - "${JAEGER_PORT}" # Jaeger UI
       - "${OTEL_COLLECTOR_PORT_GRPC}"
     environment:
+      - OPENSEARCH_HOST=${OPENSEARCH_HOST}
+      - OPENSEARCH_PORT=${OPENSEARCH_PORT}
       - METRICS_STORAGE_TYPE=prometheus
+      - COLLECTOR_OTLP_ENABLED=true
+      - SPAN_STORAGE_TYPE=opensearch
+      - ES_TAGS_AS_FIELDS_ALL=true
+      - ES_USERNAME=${OPENSEARCH_USER}
+      - ES_PASSWORD=${OPENSEARCH_PASSWORD}
+      - ES_TLS_SKIP_HOST_VERIFY=true
+    depends_on:
+      - opensearch-dashboards
     logging: *logging
 
   # Grafana
@@ -742,7 +752,11 @@ services:
         limits:
           memory: 200M
     restart: unless-stopped
-    command: [ "--config=/etc/otelcol-config.yml", "--config=/etc/otelcol-config-extras.yml" ]
+    command:
+      [
+        "--config=/etc/otelcol-config.yml",
+        "--config=/etc/otelcol-config-extras.yml",
+      ]
     user: 0:0
     volumes:
       - ${HOST_FILESYSTEM}:/hostfs:ro
@@ -781,6 +795,7 @@ services:
       - --web.enable-otlp-receiver
       - --enable-feature=exemplar-storage
     volumes:
+      - prometheus_data:/usr/share/prometheus/data
       - ./src/prometheus/prometheus-config.yaml:/etc/prometheus/prometheus-config.yaml
     deploy:
       resources:
@@ -805,11 +820,11 @@ services:
       - node.name=demo-node
       - bootstrap.memory_lock=true
       - discovery.type=single-node
-      - OPENSEARCH_JAVA_OPTS=-Xms300m -Xmx300m
-      - DISABLE_INSTALL_DEMO_CONFIG=true
-      - DISABLE_SECURITY_PLUGIN=true
+      - OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m
       # Workaround on OSX for https://bugs.openjdk.org/browse/JDK-8345296
       - _JAVA_OPTIONS
+      - plugins.query.datasources.encryption.masterkey=8e3f206ea7c07cc1bfc5cf40
+      - "OPENSEARCH_INITIAL_ADMIN_PASSWORD=${OPENSEARCH_PASSWORD}"
     ulimits:
       memlock:
         soft: -1
@@ -817,12 +832,67 @@ services:
       nofile:
         soft: 65536
         hard: 65536
+    volumes:
+      - opensearch-data1:/usr/share/opensearch/data/${OPENSEARCH_VERSION}
     ports:
-      - "9200"
+      - ${OPENSEARCH_PORT}:${OPENSEARCH_PORT}
+      - "9600"
     healthcheck:
-      test: curl -s http://localhost:9200/_cluster/health | grep -E '"status":"(green|yellow)"'
-      start_period: 10s
+      test: curl -s https://localhost:${OPENSEARCH_PORT}/_cluster/health -u '${OPENSEARCH_USER}':'${OPENSEARCH_PASSWORD}' -k | grep -E '"status":"(green|yellow)"'
+      start_period: 30s # takes a bit longer to boot with security
       interval: 5s
       timeout: 10s
-      retries: 10
+      retries: 30
     logging: *logging
+
+  #################################################################################################
+  # OpenSearch OTel Demo specifics
+  #################################################################################################
+
+  # OpenSearch Dashboards
+  opensearch-dashboards:
+    image: ${OPENSEARCH_DASHBOARDS_IMAGE}
+    container_name: opensearch-dashboards
+    ports:
+      - ${OPENSEARCH_DASHBOARD_PORT}:${OPENSEARCH_DASHBOARD_PORT}
+    environment:
+      - OPENSEARCH_HOSTS=${OPENSEARCH_HOSTS}
+      - OPENSEARCH_DASHBOARD_PORT=${OPENSEARCH_DASHBOARD_PORT}
+      - OPENSEARCH_USER=${OPENSEARCH_USER}
+      - OPENSEARCH_PASSWORD=${OPENSEARCH_PASSWORD}
+    depends_on:
+      - opensearch
+    volumes:
+      - ./src/dashboards/config/opensearch_dashboards.yml:/usr/share/opensearch-dashboards/config/opensearch_dashboards.yml
+
+  # OpenSearch Ingestion - Data prepper
+  data-prepper:
+    platform: linux/amd64
+    image: ${DATA_PREPPER_IMAGE}
+    container_name: dataprepper
+    environment:
+      - OPENSEARCH_HOSTS=${OPENSEARCH_HOSTS}
+      - OPENSEARCH_USER=${OPENSEARCH_USER}
+      - OPENSEARCH_PASSWORD=${OPENSEARCH_PASSWORD}
+    volumes:
+      - /data/service-map/
+      - ./src/dataprepper/pipelines.template.yaml:/tmp/pipelines.template.yaml
+      - ./src/dataprepper/data-prepper-config.yaml:/usr/share/data-prepper/config/data-prepper-config.yaml
+    command: >
+      /bin/bash -c "
+      cp /tmp/pipelines.template.yaml /tmp/pipelines.yaml &&
+      chmod +w /tmp/pipelines.yaml &&
+      sed -i 's|OPENSEARCH_HOSTS|${OPENSEARCH_HOSTS}|g' /tmp/pipelines.yaml &&
+      sed -i 's|OPENSEARCH_USER|${OPENSEARCH_USER}|g' /tmp/pipelines.yaml &&
+      sed -i 's|OPENSEARCH_PASSWORD|${OPENSEARCH_PASSWORD}|g' /tmp/pipelines.yaml &&
+      mv /tmp/pipelines.yaml /usr/share/data-prepper/pipelines/pipelines.yaml &&
+      exec /usr/share/data-prepper/bin/data-prepper"
+    ports:
+      - ${DP_OTEL_TRACE_SOURCE_PORT}
+      - ${DP_OTEL_LOGS_SOURCE_PORT}
+    logging: *logging
+    depends_on:
+      opensearch:
+        condition: service_healthy
+      opensearch-dashboards:
+        condition: service_started
