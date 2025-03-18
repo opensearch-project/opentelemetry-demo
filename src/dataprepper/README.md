@@ -4,11 +4,11 @@
 
 ## What is Data Prepper
 
-[Data Prepper](https://github.com/opensearch-project/data-prepper/blob/main/docs/overview.md)  
-is an open source utility service. Data Prepper is a server-side data collector  
-with abilities to filter, enrich, transform, normalize, and aggregate data  
-for downstream analytics and visualization. The broader vision for Data Prepper  
-is to enable an end-to-end data analysis life cycle from gathering raw logs to  
+[Data Prepper](https://github.com/opensearch-project/data-prepper/blob/main/docs/overview.md)
+is an open source utility service. Data Prepper is a server-side data collector
+with abilities to filter, enrich, transform, normalize, and aggregate data
+for downstream analytics and visualization. The broader vision for Data Prepper
+is to enable an end-to-end data analysis life cycle from gathering raw logs to
 facilitating sophisticated and actionable interactive ad-hoc analyses on the data.
 
 ## What is Data Prepper Integration
@@ -26,7 +26,7 @@ Data Prepper integration is concerned with the following aspects:
 
 ## Data Prepper Trace Fields
 
-Data Prepper uses the following [Traces](https://github.com/opensearch-project/data-prepper/blob/main/docs/schemas/trace-analytics/otel-v1-apm-span-index-template.md) mapping file.
+Data Prepper uses the following [Traces][1] mapping file.
 
 The following fields are used:
 
@@ -53,7 +53,8 @@ The following fields are used:
 
 There are some additional trace.group related fields that are
 not part of the OTEL spec for traces:
-```
+
+```text
 - traceGroup - A derived field, the name of the trace's root span.
 - traceGroupFields.endTime - A derived field, the endTime of the trace's root span.
 - traceGroupFields.statusCode - A derived field, the status.code of the trace's root span.
@@ -62,4 +63,8 @@ not part of the OTEL spec for traces:
 
 ## Metrics from Traces Processors
 
-Adding new processors for creating metrics for logs and traces that pass through [Data Prepper](https://opensearch.org/blog/Announcing-Data-Prepper-2.1.0/)
+Adding new processors for creating metrics for logs and traces that pass through
+[Data Prepper][2]
+
+[1]: https://github.com/opensearch-project/data-prepper/blob/main/docs/schemas/trace-analytics/otel-v1-apm-span-index-template.md
+[2]: https://opensearch.org/blog/Announcing-Data-Prepper-2.1.0/
