@@ -876,9 +876,6 @@ services:
       - OPENSEARCH_PASSWORD=${OPENSEARCH_PASSWORD}
     volumes:
       - /data/service-map/
-      - ./src/dataprepper/templates/ss4o_metrics.json:/usr/share/data-prepper/templates/ss4o_metrics.json
-      - ./src/dataprepper/templates/ss4o_logs.json:/usr/share/data-prepper/templates/ss4o_logs.json
-      - ./src/dataprepper/templates/ss4o_traces.json:/usr/share/data-prepper/templates/ss4o_traces.json
       - ./src/dataprepper/pipelines.template.yaml:/tmp/pipelines.template.yaml
       - ./src/dataprepper/data-prepper-config.yaml:/usr/share/data-prepper/config/data-prepper-config.yaml
     command: >
