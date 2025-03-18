@@ -1,3 +1,6 @@
+# Copyright OpenSearch Contributors
+# SPDX-License-Identifier: Apache-2.0
+
 # Copyright The OpenTelemetry Authors
 # SPDX-License-Identifier: Apache-2.0
 
@@ -131,15 +134,17 @@ exporters:
       insecure: true
     sending_queue:
       batch:
-  opensearch:
-    logs_index: otel-logs
-    logs_index_time_format: "yyyy-MM-dd"
-    http:
-      endpoint: "http://opensearch:9200"
-      tls:
-        insecure: true
-    sending_queue:
-      batch:
+  otlp/traces:
+    endpoint: "data-prepper:21890"
+    tls:
+      insecure: true
+      insecure_skip_verify: true
+  otlp/logs:
+    endpoint: "data-prepper:21892"
+    tls:
+      insecure: true
+      insecure_skip_verify: true
+
 processors:
   memory_limiter:
     check_interval: 5s
@@ -163,16 +168,16 @@ service:
   pipelines:
     traces:
       receivers: [otlp]
-      processors: [resourcedetection, memory_limiter, transform]
-      exporters: [otlp, debug, spanmetrics]
+      processors: [resourcedetection, memory_limiter, transform, batch]
+      exporters: [otlp, debug, spanmetrics, otlp/traces]
     metrics:
       receivers: [docker_stats, httpcheck/frontend-proxy, hostmetrics, nginx, otlp, postgresql, redis, spanmetrics]
       processors: [resourcedetection, memory_limiter]
       exporters: [otlphttp/prometheus, debug]
     logs:
       receivers: [otlp]
-      processors: [resourcedetection, memory_limiter]
-      exporters: [opensearch, debug]
+      processors: [resourcedetection, memory_limiter, batch]
+      exporters: [otlp/logs, debug]
   telemetry:
     metrics:
       level: detailed
