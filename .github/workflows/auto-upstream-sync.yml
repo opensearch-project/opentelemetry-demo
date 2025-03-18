@@ -1,0 +1,241 @@
+name: Sync Fork with Upstream
+
+on:
+  schedule:
+    # Runs every Monday at 00:00 UTC
+    - cron: '0 0 * * 1'
+  workflow_dispatch:  # Allows manual triggering
+
+jobs:
+  sync-upstream:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0  # Needed to get all history
+          ref: main  # Explicitly checkout main branch
+      
+      - name: Setup Git user
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email '41898282+github-actions[bot]@users.noreply.github.com'
+      
+      - name: Add upstream remote
+        run: |
+          git remote add upstream https://github.com/open-telemetry/opentelemetry-demo.git
+      
+      - name: Fetch from upstream and origin
+        run: |
+          git fetch upstream
+          git fetch origin
+      
+      - name: Check for existing sync PRs
+        id: check_existing_prs
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const { owner, repo } = context.repo;
+            
+            // Search for open PRs with sync label
+            const prs = await github.rest.pulls.list({
+              owner,
+              repo,
+              state: 'open',
+              base: 'main'
+            });
+            
+            const syncPRs = prs.data.filter(pr => {
+              return pr.labels.some(label => label.name === 'sync' || label.name === 'automated');
+            });
+            
+            if (syncPRs.length > 0) {
+              // Found existing sync PRs
+              console.log(`Found ${syncPRs.length} existing sync PRs`);
+              core.setOutput('has_existing_pr', 'true');
+              core.setOutput('existing_pr_number', syncPRs[0].number);
+              core.setOutput('existing_pr_branch', syncPRs[0].head.ref);
+            } else {
+              console.log('No existing sync PRs found');
+              core.setOutput('has_existing_pr', 'false');
+            }
+      
+      - name: Check for upstream changes
+        id: check_changes
+        run: |
+          # Get the common ancestor of upstream/main and origin/main
+          COMMON_ANCESTOR=$(git merge-base upstream/main origin/main)
+          
+          # Count number of commits in upstream/main that aren't in origin/main
+          CHANGE_COUNT=$(git rev-list --count $COMMON_ANCESTOR..upstream/main)
+          
+          echo "Found $CHANGE_COUNT new commits in upstream"
+          
+          # Set output variable for next steps
+          if [ $CHANGE_COUNT -gt 0 ]; then
+            echo "has_changes=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: Check for conflicts
+        id: check_conflicts
+        if: steps.check_changes.outputs.has_changes == 'true'
+        run: |
+          # Create a temporary branch for testing rebase
+          git checkout -b temp-rebase-check
+          
+          # Try to rebase onto upstream/main and capture the exit code
+          if git rebase upstream/main; then
+            echo "No conflicts detected"
+            echo "has_conflicts=false" >> $GITHUB_OUTPUT
+            
+            # Cleanup temporary branch
+            git checkout main
+            git branch -D temp-rebase-check
+          else
+            echo "Conflicts detected between fork and upstream"
+            echo "has_conflicts=true" >> $GITHUB_OUTPUT
+            
+            # Get list of conflicting files for PR description
+            CONFLICT_FILES=$(git diff --name-only --diff-filter=U | tr '\n' ' ')
+            echo "conflict_files=$CONFLICT_FILES" >> $GITHUB_OUTPUT
+            
+            # Abort the rebase and clean up
+            git rebase --abort
+            git checkout main
+            git branch -D temp-rebase-check
+          fi
+      
+      - name: Update existing PR branch
+        id: update_branch
+        if: |
+          steps.check_changes.outputs.has_changes == 'true' && 
+          steps.check_existing_prs.outputs.has_existing_pr == 'true' &&
+          steps.check_conflicts.outputs.has_conflicts != 'true'
+        run: |
+          # Checkout the existing PR branch
+          git checkout ${{ steps.check_existing_prs.outputs.existing_pr_branch }} || git checkout -b ${{ steps.check_existing_prs.outputs.existing_pr_branch }}
+          
+          # Reset it to main
+          git reset --hard origin/main
+          
+          # Rebase on upstream/main
+          git rebase upstream/main
+          
+          # Force push update to the existing branch
+          git push -f origin ${{ steps.check_existing_prs.outputs.existing_pr_branch }}
+          
+          echo "Updated existing PR branch: ${{ steps.check_existing_prs.outputs.existing_pr_branch }}"
+          echo "update_succeeded=true" >> $GITHUB_OUTPUT
+      
+      - name: Create new sync branch
+        id: create_branch
+        if: |
+          steps.check_changes.outputs.has_changes == 'true' && 
+          steps.check_existing_prs.outputs.has_existing_pr != 'true' &&
+          steps.check_conflicts.outputs.has_conflicts != 'true'
+        run: |
+          # Get current date for branch name
+          DATE=$(date +%Y-%m-%d)
+          BRANCH_NAME="sync/upstream-$DATE"
+          
+          # Create new branch based on current main
+          git checkout -b $BRANCH_NAME
+          
+          # Rebase on upstream/main
+          git rebase upstream/main
+          
+          # Push the branch to origin
+          git push -f origin $BRANCH_NAME
+          
+          # Store branch name for later use
+          echo "BRANCH_NAME=$BRANCH_NAME" >> $GITHUB_ENV
+          echo "branch_name=$BRANCH_NAME" >> $GITHUB_OUTPUT
+      
+      - name: Create Pull Request
+        if: |
+          steps.check_changes.outputs.has_changes == 'true' && 
+          steps.check_existing_prs.outputs.has_existing_pr != 'true' &&
+          steps.check_conflicts.outputs.has_conflicts != 'true'
+        uses: peter-evans/create-pull-request@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          title: "Sync with upstream - ${{ steps.create_branch.outputs.branch_name }}"
+          body: |
+            This PR syncs this fork with the upstream repository using rebase.
+            
+            This is an automated PR created by the weekly sync GitHub Action.
+          branch: ${{ steps.create_branch.outputs.branch_name }}
+          base: main
+          labels: "sync,automated"
+      
+      - name: Comment on existing PR for successful update
+        if: |
+          steps.check_changes.outputs.has_changes == 'true' && 
+          steps.check_existing_prs.outputs.has_existing_pr == 'true' &&
+          steps.update_branch.outputs.update_succeeded == 'true'
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const { owner, repo } = context.repo;
+            const date = new Date().toISOString().split('T')[0];
+            
+            await github.rest.issues.createComment({
+              owner,
+              repo,
+              issue_number: ${{ steps.check_existing_prs.outputs.existing_pr_number }},
+              body: `Branch has been updated with latest upstream changes on ${date}.`
+            });
+      
+      - name: Comment on existing PR for conflicts
+        if: |
+          steps.check_changes.outputs.has_changes == 'true' && 
+          steps.check_existing_prs.outputs.has_existing_pr == 'true' &&
+          steps.check_conflicts.outputs.has_conflicts == 'true'
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const { owner, repo } = context.repo;
+            const date = new Date().toISOString().split('T')[0];
+            const conflictFiles = `${{ steps.check_conflicts.outputs.conflict_files }}`;
+            
+            await github.rest.issues.createComment({
+              owner,
+              repo,
+              issue_number: ${{ steps.check_existing_prs.outputs.existing_pr_number }},
+              body: `⚠️ Detected conflicts when trying to update with upstream changes on ${date}.\n\n` +
+                    `The following files have conflicts:\n${conflictFiles}\n\n` +
+                    `Please resolve these conflicts manually.`
+            });
+      
+      - name: Create issue for conflicts when no PR exists
+        if: |
+          steps.check_changes.outputs.has_changes == 'true' && 
+          steps.check_existing_prs.outputs.has_existing_pr != 'true' &&
+          steps.check_conflicts.outputs.has_conflicts == 'true'
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const { owner, repo } = context.repo;
+            const date = new Date().toISOString().split('T')[0];
+            const conflictFiles = `${{ steps.check_conflicts.outputs.conflict_files }}`;
+            
+            await github.rest.issues.create({
+              owner,
+              repo,
+              title: `Sync with upstream failed - Conflicts detected (${date})`,
+              body: `The automated sync with upstream repository failed due to conflicts.\n\n` +
+                    `The following files have conflicts:\n${conflictFiles}\n\n` +
+                    `Please sync with upstream manually.`,
+              labels: ["sync-failed", "help wanted"]
+            });
+      
+      - name: No changes found
+        if: steps.check_changes.outputs.has_changes != 'true'
+        run: echo "No new changes found in upstream repository. Skipping PR creation."
