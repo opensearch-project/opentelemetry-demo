@@ -719,7 +719,8 @@ services:
       - OPENSEARCH_PORT=${OPENSEARCH_PORT}
       - METRICS_STORAGE_TYPE=prometheus
       - COLLECTOR_OTLP_ENABLED=true
-      - SPAN_STORAGE_TYPE=opensearch
+      - SPAN_STORAGE_TYPE=elasticsearch
+      - ES_VERSION=7
       - ES_TAGS_AS_FIELDS_ALL=true
       - ES_USERNAME=${OPENSEARCH_USER}
       - ES_PASSWORD=${OPENSEARCH_PASSWORD}
@@ -813,10 +814,6 @@ services:
   opensearch:
     image: ${OPENSEARCH_IMAGE}
     container_name: opensearch
-    deploy:
-      resources:
-        limits:
-          memory: 1.1G
     restart: unless-stopped
     environment:
       - cluster.name=demo-cluster
