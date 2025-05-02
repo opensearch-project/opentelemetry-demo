@@ -812,7 +812,7 @@ services:
   # ********************
   # Telemetry Components
   # ********************
-jaeger:
+  jaeger:
     image: ${JAEGERTRACING_IMAGE}
     container_name: jaeger
     command:
@@ -935,10 +935,6 @@ jaeger:
       dockerfile: ${OPENSEARCH_DOCKERFILE}
       cache_from:
         - ${IMAGE_NAME}:${IMAGE_VERSION}-opensearch
-    deploy:
-      resources:
-        limits:
-          memory: 1G
     restart: unless-stopped
     environment:
       - cluster.name=demo-cluster
