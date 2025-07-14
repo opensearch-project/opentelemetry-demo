@@ -132,15 +132,8 @@ exporters:
     endpoint: "http://prometheus:9090/api/v1/otlp"
     tls:
       insecure: true
-    sending_queue:
-      batch:
-  otlp/traces:
-    endpoint: "data-prepper:21890"
-    tls:
-      insecure: true
-      insecure_skip_verify: true
-  otlp/logs:
-    endpoint: "data-prepper:21892"
+  otlp/opensearch:
+    endpoint: "data-prepper:21893"
     tls:
       insecure: true
       insecure_skip_verify: true
@@ -169,7 +162,7 @@ service:
     traces:
       receivers: [otlp]
       processors: [resourcedetection, memory_limiter, transform, batch]
-      exporters: [otlp, debug, spanmetrics, otlp/traces]
+      exporters: [otlp, debug, spanmetrics, otlp/opensearch]
     metrics:
       receivers: [docker_stats, httpcheck/frontend-proxy, hostmetrics, nginx, otlp, postgresql, redis, spanmetrics]
       processors: [resourcedetection, memory_limiter]
@@ -177,7 +170,7 @@ service:
     logs:
       receivers: [otlp]
       processors: [resourcedetection, memory_limiter, batch]
-      exporters: [otlp/logs, debug]
+      exporters: [otlp/opensearch, debug]
   telemetry:
     metrics:
       level: detailed
