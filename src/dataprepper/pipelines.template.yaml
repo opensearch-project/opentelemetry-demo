@@ -18,7 +18,7 @@ otlp-pipeline:
         name: "otel-traces-pipeline"
         routes:
           - "traces"
-  
+
 otel-logs-pipeline:
   workers: 5
   delay: 10
