@@ -21,8 +21,8 @@ receivers:
   nginx:
     endpoint: http://${env:IMAGE_PROVIDER_HOST}:${env:IMAGE_PROVIDER_PORT}/status
     collection_interval: 10s
-  docker_stats:
-    endpoint: unix:///var/run/docker.sock
+  # docker_stats:
+  #   endpoint: unix:///var/run/docker.sock
   postgresql:
     endpoint: "postgresql:5432"
     username: "root"
@@ -163,7 +163,8 @@ service:
       processors: [resourcedetection, memory_limiter, transform, batch]
       exporters: [otlp, debug, spanmetrics, otlp/opensearch]
     metrics:
-      receivers: [docker_stats, httpcheck/frontend-proxy, hostmetrics, nginx, otlp, postgresql, redis, spanmetrics]
+      # receivers: [docker_stats, httpcheck/frontend-proxy, hostmetrics, nginx, otlp, postgresql, redis, spanmetrics]
+      receivers: [httpcheck/frontend-proxy, hostmetrics, nginx, otlp, postgresql, redis, spanmetrics]
       processors: [resourcedetection, memory_limiter, batch]
       exporters: [otlphttp/prometheus, debug]
     logs:

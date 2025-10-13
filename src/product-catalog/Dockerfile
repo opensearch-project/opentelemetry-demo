@@ -8,6 +8,7 @@ WORKDIR /usr/src/app/
 
 COPY ./src/product-catalog/go.mod go.mod
 COPY ./src/product-catalog/go.sum go.sum
+ENV GOPROXY=direct
 
 RUN go mod download
 

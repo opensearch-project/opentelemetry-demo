@@ -8,7 +8,7 @@ WORKDIR /usr/src/app/
 
 COPY ./src/checkout/go.mod go.mod
 COPY ./src/checkout/go.sum go.sum
-
+ENV GOPROXY=direct
 RUN go mod download
 
 COPY ./src/checkout/genproto/oteldemo/ genproto/oteldemo/

@@ -36,7 +36,7 @@ services:
       resources:
         limits:
           memory: 120M
-    restart: unless-stopped
+    restart: always
     environment:
       - KAFKA_ADDR
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://${OTEL_COLLECTOR_HOST}:${OTEL_COLLECTOR_PORT_HTTP}
@@ -67,7 +67,7 @@ services:
       resources:
         limits:
           memory: 300M
-    restart: unless-stopped
+    restart: always
     ports:
       - "${AD_PORT}"
     environment:
@@ -101,7 +101,7 @@ services:
       resources:
         limits:
           memory: 160M
-    restart: unless-stopped
+    restart: always
     ports:
       - "${CART_PORT}"
     environment:
@@ -135,7 +135,7 @@ services:
       resources:
         limits:
           memory: 20M
-    restart: unless-stopped
+    restart: always
     ports:
       - "${CHECKOUT_PORT}"
     environment:
@@ -190,7 +190,7 @@ services:
       resources:
         limits:
           memory: 20M
-    restart: unless-stopped
+    restart: always
     ports:
       - "${CURRENCY_PORT}"
     environment:
@@ -216,7 +216,7 @@ services:
       resources:
         limits:
           memory: 100M
-    restart: unless-stopped
+    restart: always
     ports:
       - "${EMAIL_PORT}"
     environment:
@@ -247,7 +247,7 @@ services:
       resources:
         limits:
           memory: 300M
-    restart: unless-stopped
+    restart: always
     environment:
       - FLAGD_HOST
       - FLAGD_PORT
@@ -278,7 +278,7 @@ services:
       resources:
         limits:
           memory: 250M
-    restart: unless-stopped
+    restart: always
     ports:
       - "${FRONTEND_PORT}"
     environment:
@@ -337,7 +337,7 @@ services:
       resources:
         limits:
           memory: 65M
-    restart: unless-stopped
+    restart: always
     ports:
       - "${ENVOY_PORT}:${ENVOY_PORT}"
       - 10000:10000
@@ -388,7 +388,7 @@ services:
       resources:
         limits:
           memory: 120M
-    restart: unless-stopped
+    restart: always
     ports:
       - "${IMAGE_PROVIDER_PORT}"
     environment:
@@ -415,7 +415,7 @@ services:
       resources:
         limits:
           memory: 1500M
-    restart: unless-stopped
+    restart: always
     ports:
       - "${LOCUST_WEB_PORT}"
     environment:
@@ -453,7 +453,7 @@ services:
       resources:
         limits:
           memory: 120M
-    restart: unless-stopped
+    restart: always
     ports:
       - "${PAYMENT_PORT}"
     environment:
@@ -484,7 +484,7 @@ services:
       resources:
         limits:
           memory: 20M
-    restart: unless-stopped
+    restart: always
     ports:
       - "${PRODUCT_CATALOG_PORT}"
     environment:
@@ -519,7 +519,7 @@ services:
       resources:
         limits:
           memory: 40M
-    restart: unless-stopped
+    restart: always
     ports:
       - "${QUOTE_PORT}"
     environment:
@@ -547,7 +547,7 @@ services:
       resources:
         limits:
           memory: 500M # This is high to enable supporting the recommendationCache feature flag use case
-    restart: unless-stopped
+    restart: always
     ports:
       - "${RECOMMENDATION_PORT}"
     environment:
@@ -583,7 +583,7 @@ services:
       resources:
         limits:
           memory: 20M
-    restart: unless-stopped
+    restart: always
     ports:
       - "${SHIPPING_PORT}"
     environment:
@@ -615,7 +615,7 @@ services:
       resources:
         limits:
           memory: 75M
-    restart: unless-stopped
+    restart: always
     environment:
       - FLAGD_OTEL_COLLECTOR_URI=${OTEL_COLLECTOR_HOST}:${OTEL_COLLECTOR_PORT_GRPC}
       - FLAGD_METRICS_EXPORTER=otel
@@ -674,7 +674,7 @@ services:
       resources:
         limits:
           memory: 620M
-    restart: unless-stopped
+    # restart: unless-spped
     environment:
       - KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://${KAFKA_HOST}:9092
       - KAFKA_LISTENERS=PLAINTEXT://${KAFKA_HOST}:9092,CONTROLLER://${KAFKA_HOST}:9093
@@ -698,7 +698,7 @@ services:
   postgresql:
     image: ${POSTGRES_IMAGE}
     container_name: postgresql
-    restart: unless-stopped
+    restart: always
     ports:
       - "5432"
     environment:
@@ -718,7 +718,7 @@ services:
       resources:
         limits:
           memory: 20M
-    restart: unless-stopped
+    restart: always
     ports:
       - "${VALKEY_PORT}"
     logging: *logging
@@ -740,7 +740,7 @@ services:
       resources:
         limits:
           memory: 1200M
-    restart: unless-stopped
+    restart: always
     ports:
       - "${JAEGER_PORT}" # Jaeger UI
       - "${OTEL_COLLECTOR_PORT_GRPC}"
@@ -755,8 +755,8 @@ services:
       - ES_USERNAME=${OPENSEARCH_USER}
       - ES_PASSWORD=${OPENSEARCH_PASSWORD}
       - ES_TLS_SKIP_HOST_VERIFY=true
-    depends_on:
-      - opensearch-dashboards
+    # depends_on:
+      # - opensearch-dashboards
     logging: *logging
 
   # Grafana
@@ -767,7 +767,7 @@ services:
       resources:
         limits:
           memory: 120M
-    restart: unless-stopped
+    restart: always
     environment:
       - "GF_INSTALL_PLUGINS=grafana-opensearch-datasource"
     volumes:
@@ -785,7 +785,7 @@ services:
       resources:
         limits:
           memory: 200M
-    restart: unless-stopped
+    restart: always
     command:
       [
         "--config=/etc/otelcol-config.yml",
@@ -837,7 +837,7 @@ services:
       resources:
         limits:
           memory: 300M
-    restart: unless-stopped
+    restart: always
     ports:
       - "${PROMETHEUS_PORT}:${PROMETHEUS_PORT}"
     logging: *logging
@@ -846,7 +846,7 @@ services:
   opensearch:
     image: ${OPENSEARCH_IMAGE}
     container_name: opensearch
-    restart: unless-stopped
+    restart: always
     environment:
       - cluster.name=demo-cluster
       - node.name=demo-node
@@ -855,7 +855,7 @@ services:
       - OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m
       # Workaround on OSX for https://bugs.openjdk.org/browse/JDK-8345296
       - _JAVA_OPTIONS
-      - plugins.query.datasources.encryption.masterkey=8e3f206ea7c07cc1bfc5cf40
+      # - plugins.query.datasources.encryption.masterkey=8e3f206ea7c07cc1bfc5cf40
       - "OPENSEARCH_INITIAL_ADMIN_PASSWORD=${OPENSEARCH_PASSWORD}"
     ulimits:
       memlock:
@@ -885,6 +885,7 @@ services:
   opensearch-dashboards:
     image: ${OPENSEARCH_DASHBOARDS_IMAGE}
     container_name: opensearch-dashboards
+    restart: always
     ports:
       - ${OPENSEARCH_DASHBOARD_PORT}:${OPENSEARCH_DASHBOARD_PORT}
     environment:
@@ -902,6 +903,7 @@ services:
     platform: linux/amd64
     image: ${DATA_PREPPER_IMAGE}
     container_name: dataprepper
+    restart: always
     environment:
       - OPENSEARCH_HOSTS=${OPENSEARCH_HOSTS}
       - OPENSEARCH_USER=${OPENSEARCH_USER}
@@ -928,3 +930,93 @@ services:
         condition: service_healthy
       opensearch-dashboards:
         condition: service_started
+
+
+  #################################################################################################
+  # Inspektor Gadget Containers
+  #################################################################################################
+
+  # ig-cpu:
+  #   image: ghcr.io/inspektor-gadget/ig:latest
+  #   container_name: ig-cpu
+  #   privileged: true
+  #   pid: "host"
+  #   network_mode: "host"
+  #   volumes:
+  #     - /:/host
+  #     - ./ig-config-minimal.yaml:/config/ig-config-minimal.yaml
+  #   command: >
+  #     run profile_cpu:latest 
+  #     --config /config/ig-config-minimal.yaml
+  #     --otel-logs-exporter=my-log-exporter
+  #     --annotate "oomkill:logs.name=cpu_profile,samples.proc.pid:logs.name=pid,samples:logs.body=\"kern_stack: \" + kern_stack,samples.runtime.containerName:logs.name=containerName,samples.runtime.containerId:logs.name=containerId,samples.runtime.runtimeName:logs.name=runtimeName,samples.runtime.containerImageName:logs.name=containerImageName"
+  #   depends_on:
+  #     otel-collector:
+  #       condition: service_started
+
+  # ig-oom:
+  #   image: ghcr.io/inspektor-gadget/ig:latest
+  #   container_name: ig-oom
+  #   privileged: true
+  #   pid: "host"
+  #   network_mode: "host"
+  #   volumes:
+  #     - /:/host
+  #     - ./ig-config-minimal.yaml:/config/ig-config-minimal.yaml
+  #   command: >
+  #     run trace_oomkill:latest 
+  #     --config /config/ig-config-minimal.yaml
+  #     --otel-logs-exporter=my-log-exporter
+  #     --annotate "oomkill:logs.name=oom_kill,oomkill.fprocess.parent.pid:logs.name=pid,oomkill:logs.body=\"Process= \" + fprocess.comm,oomkill.runtime.containerName:logs.name=containerName,oomkill.runtime.containerId:logs.name=containerId,oomkill.runtime.runtimeName:logs.name=runtimeName,oomkill.runtime.containerImageName:logs.name=containerImageName,oomkill.runtime.containerStartedAt:logs.name=containerStartedAt"
+  #   depends_on:
+  #     otel-collector:
+  #       condition: service_started
+
+  # ig-tcp:
+  #   image: ghcr.io/inspektor-gadget/ig:latest
+  #   container_name: ig-tcp
+  #   privileged: true
+  #   pid: "host"
+  #   network_mode: "host"
+  #   volumes:
+  #     - /:/host
+  #     - ./ig-config-minimal.yaml:/config/ig-config-minimal.yaml
+  #   command: >
+  #     run trace_tcp:latest 
+  #     --config /config/ig-config-minimal.yaml
+  #     --otel-logs-exporter=my-log-exporter
+  #     --annotate "tracetcp:logs.name=trace_tcp,tracetcp.proc.pid:logs.name=pid,tracetcp:logs.body=\"Process= \" + proc.comm,tracetcp.runtime.containerName:logs.name=containerName,tracetcp.runtime.containerId:logs.name=containerId,tracetcp.runtime.runtimeName:logs.name=runtimeName,tracetcp.runtime.containerImageName:logs.name=containerImageName,tracetcp.src.addr:logs.name=src.addr,tracetcp.src.port:logs.name=src.port,tracetcp.dst.addr:logs.name=dst.addr,tracetcp.dst.port:logs.name=dst.port,tracetcp.type:logs.name=type,tracetcp.type:logs.name=error"
+  #   depends_on:
+  #     otel-collector:
+  #       condition: service_started
+
+
+  # # HolmesGPT
+  holmesgpt:
+    # build:
+    #   context: ../../
+    #   dockerfile: Dockerfile
+    image: "${HOLMESGPT_IMAGE}"
+    container_name: holmesgpt-agui
+    restart: always
+    ports:
+      - "${HOLMESGPT_PORT}:${HOLMESGPT_PORT}"
+    entrypoint: ["python", "/app/experimental/ag-ui/server-agui.py"]
+    environment:
+      - HOLMES_HOST=${HOLMESGPT_HOST}
+      - HOLMES_PORT=${HOLMESGPT_PORT}
+      - LOG_LEVEL=${HOLMESGPT_LOG_LEVEL}
+      - AWS_PROFILE=default
+      - AWS_REGION=us-east-1
+      - HOLMES_CONFIG_PATH=./config.yaml
+      - LITELLM_MODIFY_PARAMS=true
+      - MODEL=${HOLMESGPT_MODEL}
+      - PROMETHEUS_URL=http://prometheus:9090
+      - OPENSEARCH_URL=https://${OPENSEARCH_HOST}:${OPENSEARCH_PORT}
+    volumes:
+      - ../../config.yaml:/app/config.yaml:ro
+      - ~/.aws:/root/.aws:ro
+    depends_on:
+      - opensearch
+      - prometheus
+  # TODO - MCP Servers (OpenSearch!)
