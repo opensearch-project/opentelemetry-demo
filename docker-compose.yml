@@ -833,6 +833,7 @@ services:
     volumes:
       - prometheus_data:/usr/share/prometheus/data
       - ./src/prometheus/prometheus-config.yaml:/etc/prometheus/prometheus-config.yaml
+      - ./src/prometheus/rules.yml:/etc/prometheus/rules.yml
     deploy:
       resources:
         limits:
@@ -841,7 +842,19 @@ services:
     ports:
       - "${PROMETHEUS_PORT}:${PROMETHEUS_PORT}"
     logging: *logging
+    depends_on:
+      - alertmanager
 
+  alertmanager:
+    image: ${PROMETHEUS_ALERTMANAGER_IMAGE}
+    container_name: alertmanager
+    ports:
+      - "${PROMETHEUS_ALERTMANAGER_PORT}:${PROMETHEUS_ALERTMANAGER_PORT}"
+    volumes:
+      - ./src/prometheus/alertmanager.yml:/etc/alertmanager/alertmanager.yml
+    command:
+      - '--config.file=/etc/alertmanager/alertmanager.yml'
+      - '--storage.path=/alertmanager'
   # OpenSearch
   opensearch:
     image: ${OPENSEARCH_IMAGE}
