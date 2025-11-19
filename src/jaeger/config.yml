@@ -36,14 +36,10 @@ extensions:
     backends:
       opensearch_backend:
         elasticsearch:
-          server_urls: ["https://${env:OPENSEARCH_HOST}:${env:OPENSEARCH_PORT}"]
-          version: 7
-          tags_as_fields_all: true
-          username: ${env:OPENSEARCH_USER}
-          password: ${env:OPENSEARCH_PASSWORD}
+          server_urls: ["https://${env:OPENSEARCH_USER}:${env:OPENSEARCH_PASSWORD_ENCODED}@${env:OPENSEARCH_HOST}:${env:OPENSEARCH_PORT}"]
           tls:
-            enabled: true
-            skip_host_verify: true
+            insecure: true
+            insecure_skip_verify: true
     metric_backends:
       metrics_backend:
         prometheus:
