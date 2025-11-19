@@ -835,6 +835,7 @@ services:
       - OPENSEARCH_PORT
       - OPENSEARCH_USER
       - OPENSEARCH_PASSWORD
+      - OPENSEARCH_PASSWORD_ENCODED
     volumes:
       - ./src/jaeger/config.yml:/etc/jaeger/config.yml
     depends_on:

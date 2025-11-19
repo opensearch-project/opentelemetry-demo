@@ -163,7 +163,7 @@ service:
   pipelines:
     traces:
       receivers: [otlp]
-      processors: [resourcedetection, memory_limiter, transform, batch]
+      processors: [resourcedetection, memory_limiter, transform]
       exporters: [otlp, debug, spanmetrics, otlp/opensearch]
     metrics:
       receivers: [docker_stats, httpcheck/frontend-proxy, hostmetrics, nginx, otlp, postgresql, redis, spanmetrics]
@@ -171,7 +171,7 @@ service:
       exporters: [otlphttp/prometheus, debug]
     logs:
       receivers: [otlp]
-      processors: [resourcedetection, memory_limiter, batch]
+      processors: [resourcedetection, memory_limiter]
       exporters: [otlp/opensearch, debug]
   telemetry:
     metrics:
