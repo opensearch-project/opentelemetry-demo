@@ -51,9 +51,6 @@ traces-raw-pipeline:
     pipeline:
       name: "otel-traces-pipeline"
   processor:
-      # workaround for https://github.com/opensearch-project/data-prepper/issues/5616
-    - delete_entries:
-        with_keys: ["attributes/upstream_cluster", "attributes/user_agent", "attributes/app/ads/contextKeys"]
     - otel_trace_raw:
   sink:
     - opensearch:
