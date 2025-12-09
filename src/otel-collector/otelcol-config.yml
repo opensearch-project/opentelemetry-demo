@@ -153,6 +153,28 @@ processors:
           # could be removed when https://github.com/vercel/next.js/pull/64852 is fixed upstream
           - replace_pattern(name, "\\?.*", "")
           - replace_match(name, "GET /api/products/*", "GET /api/products/{productId}")
+          # Workaround for https://github.com/opensearch-project/data-prepper/issues/5616
+          # Flatten nested dotted attribute keys to prevent OpenSearch mapping conflicts
+          # Copy nested values to flattened keys, then delete nested keys
+          - set(attributes["db_system_name"], attributes["db.system.name"]) where attributes["db.system.name"] != nil
+          - delete_key(attributes, "db.system.name")
+          - set(attributes["code_function_name"], attributes["code.function.name"]) where attributes["code.function.name"] != nil
+          - delete_key(attributes, "code.function.name")
+          - set(attributes["user_agent_original"], attributes["user_agent.original"]) where attributes["user_agent.original"] != nil
+          - delete_key(attributes, "user_agent.original")
+          - set(attributes["upstream_cluster_name"], attributes["upstream_cluster.name"]) where attributes["upstream_cluster.name"] != nil
+          - delete_key(attributes, "upstream_cluster.name")
+          - set(attributes["error_type"], attributes["error.type"]) where attributes["error.type"] != nil
+          - delete_key(attributes, "error.type")
+          - set(attributes["app_ads_contextKeys"], attributes["app.ads.contextKeys"]) where attributes["app.ads.contextKeys"] != nil
+          - delete_key(attributes, "app.ads.contextKeys")
+    log_statements:
+      - context: log
+        statements:
+          # Handle structured log bodies (maps/objects) that cause parse errors in OpenSearch
+          # Flatten nested structures first, then convert to key=value string format
+          - flatten(body) where IsMap(body)
+          - set(body, ToKeyValueString(body)) where IsMap(body)
 
 connectors:
   spanmetrics:
@@ -169,7 +191,7 @@ service:
       exporters: [otlphttp/prometheus, debug]
     logs:
       receivers: [otlp]
-      processors: [resourcedetection, memory_limiter]
+      processors: [resourcedetection, memory_limiter, transform]
       exporters: [otlp/opensearch, debug]
   telemetry:
     metrics:
