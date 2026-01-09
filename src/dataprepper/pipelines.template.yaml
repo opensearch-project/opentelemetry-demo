@@ -52,8 +52,8 @@ traces-raw-pipeline:
       name: "otel-traces-pipeline"
   processor:
       # workaround for https://github.com/opensearch-project/data-prepper/issues/5616
-    - delete_entries:
-        with_keys: ["attributes/upstream_cluster", "attributes/user_agent", "attributes/app/ads/contextKeys"]
+    # - delete_entries:
+    #     with_keys: ["attributes/upstream_cluster", "attributes/user_agent", "attributes/app/ads/contextKeys"]
     - otel_trace_raw:
   sink:
     - opensearch:
@@ -69,11 +69,26 @@ service-map-pipeline:
     pipeline:
       name: "otel-traces-pipeline"
   processor:
-    - service_map_stateful:
+    - otel_apm_service_map:
+        group_by_attributes: [telemetry.sdk.language]
+        window_duration: 10
+  route:
+    - otel_apm_service_map_route : 'getEventType() == "OTelAPMServiceMap"' # Topology + service details 
+    - service_processed_metrics : 'getEventType() == "METRIC"' # RED metrics
   sink:
+    - stdout:
+        routes: [otel_apm_service_map_route]
     - opensearch:
         hosts: OPENSEARCH_HOSTS
         username: OPENSEARCH_USER
         password: OPENSEARCH_PASSWORD
+        index: otel-apm-service-map
+        routes: [otel_apm_service_map_route]
         insecure: true
-        index_type: trace-analytics-service-map
+    - prometheus:
+        url: AMP_WORKSPACE_URL
+        remote_write_version: "0.1.0"
+        routes: [service_processed_metrics]
+        aws:
+          region: AWS_REGION
+          sts_role_arn: STS_ROLE_ARN

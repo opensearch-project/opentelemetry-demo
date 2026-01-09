@@ -840,8 +840,8 @@ services:
       - OPENSEARCH_PASSWORD_ENCODED
     volumes:
       - ./src/jaeger/config.yml:/etc/jaeger/config.yml
-    depends_on:
-      - opensearch-dashboards
+    # depends_on:
+    #   - opensearch-dashboards
     logging: *logging
 
   # Grafana
@@ -904,6 +904,7 @@ services:
       - POSTGRES_PASSWORD
       - GOMEMLIMIT=160MiB
 
+
   # Prometheus
   prometheus:
     image: ${PROMETHEUS_IMAGE}
@@ -936,8 +937,8 @@ services:
     build:
       context: ./
       dockerfile: ${OPENSEARCH_DOCKERFILE}
-      cache_from:
-        - ${IMAGE_NAME}:${IMAGE_VERSION}-opensearch
+      # cache_from:
+      #   - ${IMAGE_NAME}:${IMAGE_VERSION}-opensearch
     restart: unless-stopped
     environment:
       - cluster.name=demo-cluster
@@ -973,35 +974,40 @@ services:
   # OpenSearch OTel Demo specifics
   #################################################################################################
 
-  # OpenSearch Dashboards
-  opensearch-dashboards:
-    image: ${OPENSEARCH_DASHBOARDS_IMAGE}
-    container_name: opensearch-dashboards
-    ports:
-      - ${OPENSEARCH_DASHBOARD_PORT}:${OPENSEARCH_DASHBOARD_PORT}
-    environment:
-      - OPENSEARCH_HOSTS=${OPENSEARCH_HOSTS}
-      - OPENSEARCH_DASHBOARD_PORT=${OPENSEARCH_DASHBOARD_PORT}
-      - OPENSEARCH_USER=${OPENSEARCH_USER}
-      - OPENSEARCH_PASSWORD=${OPENSEARCH_PASSWORD}
-    depends_on:
-      - opensearch
-    volumes:
-      - ./src/dashboards/config/opensearch_dashboards.yml:/usr/share/opensearch-dashboards/config/opensearch_dashboards.yml
+  # # OpenSearch Dashboards
+  # opensearch-dashboards:
+  #   image: ${OPENSEARCH_DASHBOARDS_IMAGE}
+  #   container_name: opensearch-dashboards
+  #   ports:
+  #     - ${OPENSEARCH_DASHBOARD_PORT}:${OPENSEARCH_DASHBOARD_PORT}
+  #   environment:
+  #     - OPENSEARCH_HOSTS=${OPENSEARCH_HOSTS}
+  #     - OPENSEARCH_DASHBOARD_PORT=${OPENSEARCH_DASHBOARD_PORT}
+  #     - OPENSEARCH_USER=${OPENSEARCH_USER}
+  #     - OPENSEARCH_PASSWORD=${OPENSEARCH_PASSWORD}
+  #   depends_on:
+  #     - opensearch
+  #   volumes:
+  #     - ./src/dashboards/config/opensearch_dashboards.yml:/usr/share/opensearch-dashboards/config/opensearch_dashboards.yml
 
   # OpenSearch Ingestion - Data prepper
   data-prepper:
-    platform: linux/amd64
     image: ${DATA_PREPPER_IMAGE}
     container_name: dataprepper
     environment:
       - OPENSEARCH_HOSTS=${OPENSEARCH_HOSTS}
       - OPENSEARCH_USER=${OPENSEARCH_USER}
       - OPENSEARCH_PASSWORD=${OPENSEARCH_PASSWORD}
+      - AWS_REGION=${AWS_REGION}
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - STS_ROLE_ARN=${STS_ROLE_ARN}
+      - AMP_WORKSPACE_URL=${AMP_WORKSPACE_URL}
     volumes:
       - /data/service-map/
       - ./src/dataprepper/pipelines.template.yaml:/tmp/pipelines.template.yaml
       - ./src/dataprepper/data-prepper-config.yaml:/usr/share/data-prepper/config/data-prepper-config.yaml
+      - ~/.aws:/root/.aws:ro
     command: >
       /bin/bash -c "
       cp /tmp/pipelines.template.yaml /tmp/pipelines.yaml &&
@@ -1009,6 +1015,9 @@ services:
       sed -i 's|OPENSEARCH_HOSTS|${OPENSEARCH_HOSTS}|g' /tmp/pipelines.yaml &&
       sed -i 's|OPENSEARCH_USER|${OPENSEARCH_USER}|g' /tmp/pipelines.yaml &&
       sed -i 's|OPENSEARCH_PASSWORD|${OPENSEARCH_PASSWORD}|g' /tmp/pipelines.yaml &&
+      sed -i 's|AWS_REGION|${AWS_REGION}|g' /tmp/pipelines.yaml &&
+      sed -i 's|STS_ROLE_ARN|${STS_ROLE_ARN}|g' /tmp/pipelines.yaml &&
+      sed -i 's|AMP_WORKSPACE_URL|${AMP_WORKSPACE_URL}|g' /tmp/pipelines.yaml &&
       mv /tmp/pipelines.yaml /usr/share/data-prepper/pipelines/pipelines.yaml &&
       exec /usr/share/data-prepper/bin/data-prepper"
     ports:
@@ -1018,5 +1027,5 @@ services:
     depends_on:
       opensearch:
         condition: service_healthy
-      opensearch-dashboards:
-        condition: service_started
+      # opensearch-dashboards:
+      #   condition: service_started

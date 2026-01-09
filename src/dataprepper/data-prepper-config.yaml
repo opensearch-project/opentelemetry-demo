@@ -2,3 +2,9 @@
 # SPDX-License-Identifier: Apache-2.0
 
 ssl: false
+
+# Enable experimental Prometheus sink
+experimental:
+  enabled_plugins:
+    sink:
+      - prometheus
