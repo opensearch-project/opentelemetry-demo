@@ -188,7 +188,7 @@ service:
     metrics:
       receivers: [docker_stats, httpcheck/frontend-proxy, hostmetrics, nginx, otlp, postgresql, redis, spanmetrics]
       processors: [resourcedetection, memory_limiter]
-      exporters: [otlphttp/prometheus, debug]
+      exporters: [otlphttp/prometheus, debug, otlp/opensearch]
 
     logs:
       receivers: [otlp]

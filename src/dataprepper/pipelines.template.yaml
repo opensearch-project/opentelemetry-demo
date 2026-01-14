@@ -9,11 +9,16 @@ otlp-pipeline:
   route:
     - logs: "getEventType() == \"LOG\""
     - traces: "getEventType() == \"TRACE\""
+    - metrics: "getEventType() == \"METRIC\""
   sink:
     - pipeline:
         name: "otel-logs-pipeline"
         routes:
           - "logs"
+    - pipeline:
+        name: "otel-metrics-pipeline"
+        routes:
+          - "metrics"
     - pipeline:
         name: "otel-traces-pipeline"
         routes:
@@ -34,6 +39,22 @@ otel-logs-pipeline:
         password: OPENSEARCH_PASSWORD
         insecure: true
         index_type: log-analytics-plain
+
+otel-metrics-pipeline:
+  workers: 5
+  delay: 10
+  source:
+    pipeline:
+      name: "otlp-pipeline"
+  buffer:
+    bounded_blocking:
+  sink:
+    - prometheus:
+        url: AMP_WORKSPACE_URL
+        remote_write_version: "0.1.0"
+        aws:
+          region: AWS_REGION
+          sts_role_arn: STS_ROLE_ARN
 
 otel-traces-pipeline:
   delay: "100"
