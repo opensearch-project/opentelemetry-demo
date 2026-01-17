@@ -31,7 +31,7 @@ internal class Consumer : IDisposable
     private ILogger _logger;
     private IConsumer<string, byte[]> _consumer;
     private bool _isListening;
-    private DBContext? _dbContext;
+    private readonly string? _dbConnectionString;
     private static readonly ActivitySource MyActivitySource = new("Accounting.Consumer");
 
     public Consumer(ILogger<Consumer> logger)
@@ -39,13 +39,17 @@ internal class Consumer : IDisposable
         _logger = logger;
 
         var servers = Environment.GetEnvironmentVariable("KAFKA_ADDR")
-            ?? throw new ArgumentNullException("KAFKA_ADDR");
+            ?? throw new InvalidOperationException("The KAFKA_ADDR environment variable is not set.");
 
         _consumer = BuildConsumer(servers);
         _consumer.Subscribe(TopicName);
 
-        _logger.LogInformation($"Connecting to Kafka: {servers}");
-        _dbContext = Environment.GetEnvironmentVariable("DB_CONNECTION_STRING") == null ? null : new DBContext();
+       if (_logger.IsEnabled(LogLevel.Information))
+       {
+           _logger.LogInformation("Connecting to Kafka: {servers}", servers);
+       }
+
+        _dbConnectionString = Environment.GetEnvironmentVariable("DB_CONNECTION_STRING");
     }
 
     public void StartListening()
@@ -64,7 +68,10 @@ internal class Consumer : IDisposable
                 }
                 catch (ConsumeException e)
                 {
-                    _logger.LogError(e, "Consume error: {0}", e.Error.Reason);
+                    if (_logger.IsEnabled(LogLevel.Error))
+                    {
+                        _logger.LogError(e, "Consume error: {reason}", e.Error.Reason);
+                    }
                 }
             }
         }
@@ -83,16 +90,17 @@ internal class Consumer : IDisposable
             var order = OrderResult.Parser.ParseFrom(message.Value);
             Log.OrderReceivedMessage(_logger, order);
 
-            if (_dbContext == null)
+            if (_dbConnectionString == null)
             {
                 return;
             }
 
+            using var dbContext = new DBContext();
             var orderEntity = new OrderEntity
             {
                 Id = order.OrderId
             };
-            _dbContext.Add(orderEntity);
+            dbContext.Add(orderEntity);
             foreach (var item in order.Items)
             {
                 var orderItem = new OrderItemEntity
@@ -105,7 +113,7 @@ internal class Consumer : IDisposable
                     OrderId = order.OrderId
                 };
 
-                _dbContext.Add(orderItem);
+                dbContext.Add(orderItem);
             }
 
             var shipping = new ShippingEntity
@@ -121,8 +129,8 @@ internal class Consumer : IDisposable
                 ZipCode = order.ShippingAddress.ZipCode,
                 OrderId = order.OrderId
             };
-            _dbContext.Add(shipping);
-            _dbContext.SaveChanges();
+            dbContext.Add(shipping);
+            dbContext.SaveChanges();
         }
         catch (Exception ex)
         {
@@ -130,7 +138,7 @@ internal class Consumer : IDisposable
         }
     }
 
-    private IConsumer<string, byte[]> BuildConsumer(string servers)
+    private static IConsumer<string, byte[]> BuildConsumer(string servers)
     {
         var conf = new ConsumerConfig
         {

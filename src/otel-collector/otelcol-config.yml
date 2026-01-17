@@ -23,6 +23,8 @@ receivers:
     collection_interval: 10s
   docker_stats:
     endpoint: unix:///var/run/docker.sock
+    # https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/44511
+    api_version: "1.44"
   postgresql:
     endpoint: ${POSTGRES_HOST}:${POSTGRES_PORT}
     username: root
@@ -195,12 +197,18 @@ service:
       exporters: [otlp/opensearch, debug]
   telemetry:
     metrics:
-      level: detailed
       readers:
         - periodic:
-            interval: 10000
-            timeout: 5000
             exporter:
               otlp:
                 protocol: http/protobuf
+                # replace with your observability meta monitoring backend
+                endpoint: http://${env:OTEL_COLLECTOR_HOST}:${env:OTEL_COLLECTOR_PORT_HTTP}
+    logs:
+      processors:
+        - batch:
+            exporter:
+              otlp:
+                protocol: http/protobuf
+                # replace with your observability meta monitoring backend
                 endpoint: http://${env:OTEL_COLLECTOR_HOST}:${env:OTEL_COLLECTOR_PORT_HTTP}

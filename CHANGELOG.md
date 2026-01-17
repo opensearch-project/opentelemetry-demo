@@ -7,6 +7,11 @@ the release.
 
 ## Unreleased
 
+* [accounting] fix memory leak with dbcontext
+  ([#2876](https://github.com/open-telemetry/opentelemetry-demo/pull/2876))
+
+## 2.2.0
+
 * [feat] add ipv6 support
   ([#2594](https://github.com/open-telemetry/opentelemetry-demo/pull/2594))
 * [chore] Use pre-built nginx otel image
@@ -22,11 +27,18 @@ the release.
   ([#2644](https://github.com/open-telemetry/opentelemetry-demo/pull/2644))
 * [frontend] fix item calculation and shipping
   ([#2684](https://github.com/open-telemetry/opentelemetry-demo/pull/2684))
+* [flagd-ui] add back legacy REST APIs to empower programmatic usage
+  ([#2720](https://github.com/open-telemetry/opentelemetry-demo/pull/2720))
 * [collector] Remove batch processor
   ([#2734](https://github.com/open-telemetry/opentelemetry-demo/pull/2734))
 * [email] Add OTLP metrics and logs
   ([#2737](https://github.com/open-telemetry/opentelemetry-demo/pull/2737))
-* [flagd-ui] add back legacy REST APIs to empower programmatic usage ([#2720](https://github.com/open-telemetry/opentelemetry-demo/pull/2720))
+* [collector] [dockerstats/receiver] Set API version to 1.44
+  ([#2767](https://github.com/open-telemetry/opentelemetry-demo/pull/2767))
+* [cart] Add health check endpoint
+  ([#2830](https://github.com/open-telemetry/opentelemetry-demo/pull/2830))
+* [product-catalog] Use Postgres database for products
+  ([#2859](https://github.com/open-telemetry/opentelemetry-demo/pull/2859))
 
 ## 2.1.3
 
