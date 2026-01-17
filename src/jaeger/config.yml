@@ -61,3 +61,4 @@ processors:
 exporters:
   jaeger_storage_exporter:
     trace_storage: opensearch_backend
+    
