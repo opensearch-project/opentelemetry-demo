@@ -33,7 +33,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v6.0.1
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
       - name: Generate
         run: make clean docker-generate-protobuf
       - name: Check Clean Work Tree
@@ -148,7 +148,7 @@ jobs:
             setup-qemu: true
 
     steps:
-      - uses: actions/checkout@v6.0.1
+      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
           fetch-depth: 0
       - name: Load environment variables from .env file
@@ -179,32 +179,32 @@ jobs:
             echo "skip=false" >> "$GITHUB_OUTPUT"
           fi
       - name: Log in to the Container registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
         with:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
         if: ${{ inputs.push }}
       - name: Log in to Docker Hub
-        uses: docker/login-action@v3
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
         if: ${{ inputs.push }}
       - name: Set up QEMU
         if: ${{ matrix.file_tag.setup-qemu }}
-        uses: docker/setup-qemu-action@v3
+        uses: docker/setup-qemu-action@c7c53464625b32c7a7e944ae62b3e17d2b600130 # v3
         with:
           image: tonistiigi/binfmt:master
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
         with:
           buildkitd-config-inline: |
             [worker.oci]
             max-parallelism = 2
       - name: Matrix Build and push demo images
         if: steps.check_changes.outputs.skip == 'false'
-        uses: docker/build-push-action@v6.18.0
+        uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # v6.18.0
         with:
           context: ${{ matrix.file_tag.context }}
           file: ${{ matrix.file_tag.file }}
