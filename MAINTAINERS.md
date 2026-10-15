@@ -16,7 +16,6 @@ becoming a maintainer, see [CONTRIBUTING](CONTRIBUTING.md).
 | Derek Ho      | [derek-ho](https://github.com/derek-ho)         | Amazon      |
 | Lior Perry    | [YANG-DB](https://github.com/YANG-DB)           | Amazon      |
 | Simeon Widdis | [swiddis](https://github.com/swiddis)           | Amazon      |
-| Chen Dai      | [dai-chen](https://github.com/dai-chen)         | Amazon      |
 | Vamsi Manohar | [vamsi-amazon](https://github.com/vamsi-amazon) | Amazon      |
 | Peng Huo      | [penghuo](https://github.com/penghuo)           | Amazon      |
 | Sean Kao      | [seankao-az](https://github.com/seankao-az)     | Amazon      |
@@ -35,5 +34,6 @@ becoming a maintainer, see [CONTRIBUTING](CONTRIBUTING.md).
 | Kavitha Mohan     | [kavithacm](https://github.com/kavithacm)         | Amazon      |
 | Rupal Mahajan     | [rupal-bq](https://github.com/rupal-bq)           | Amazon      |
 | Peter Fitzgibbons | [pjfitzgibbons](https://github.com/pjfitzgibbons) | Amazon      |
+| Chen Dai          | [dai-chen](https://github.com/dai-chen)           | Amazon      |
 
 [1]: https://github.com/opensearch-project/.github/blob/main/RESPONSIBILITIES.md#maintainer-responsibilities
